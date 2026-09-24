@@ -4,61 +4,95 @@ import {Stage1} from '../src/stages/stage1.js';
 import {CHARACTERS,Player} from '../src/player.js';
 import {Platform} from '../src/objects.js';
 const idle=()=>({move:0,jump:false,crouch:false,interact:false,interactHeld:false});
-const make=()=>new Stage1([CHARACTERS[2],CHARACTERS[0]],()=>0);
-const step=(s,actions,seconds)=>{for(let t=0;t<seconds;t+=1/120)s.update(1/120,actions);};
+const make=()=>new Stage1([CHARACTERS[2],CHARACTERS[0]]);
+const step=(s,actions=[idle(),idle()],seconds=.1)=>{for(let t=0;t<seconds;t+=1/120)s.update(1/120,actions);};
+const place=(p,x,y=554)=>Object.assign(p,{x,y,vx:0,vy:0,grounded:true});
+const holding=()=>[{...idle(),interactHeld:true},idle()];
+function dockA(s){place(s.players[1],185);s.interact(s.players[1]);place(s.players[1],560);s.interact(s.players[1]);step(s);}
+function dockB(s){dockA(s);s.interact(s.players[1]);place(s.players[1],980);s.interact(s.players[1]);step(s);}
+
 test('independent movement, gravity, landing, jump and crouch clearance',()=>{
-  const s=make();step(s,[idle(),idle()],0.2);
-  step(s,[{...idle(),move:1},{...idle(),move:-1}],0.1);
+  const s=make();step(s);step(s,[{...idle(),move:1},{...idle(),move:-1}]);
   assert.ok(s.players[0].x>70);assert.ok(s.players[1].x<135);
   const p=s.players[0];assert.equal(p.y,554);assert.equal(p.grounded,true);
   s.update(1/120,[{...idle(),jump:true},idle()]);assert.ok(p.vy<0);
   step(s,[idle(),idle()],1.5);assert.equal(p.y,554);
   s.update(1/120,[{...idle(),crouch:true},idle()]);assert.equal(p.h,26);assert.equal(p.y,574);
-  p.x=840;s.update(1/120,[idle(),idle()]);assert.equal(p.h,26,'cannot stand through a ceiling');
-  p.x=950;s.update(1/120,[idle(),idle()]);assert.equal(p.h,46);
+  p.x=700;s.update(1/120,[idle(),idle()]);assert.equal(p.h,26);
+  p.x=800;s.update(1/120,[idle(),idle()]);assert.equal(p.h,46);
 });
 test('walls and ceiling stop bodies',()=>{
   const p=new Player(0,CHARACTERS[0],{x:50,y:100},{jumpSpeed:760});
   p.update({...idle(),move:1},1/120,[new Platform(79,0,20,500)]);assert.equal(p.x,51);
   p.vy=-760;p.update(idle(),1/120,[new Platform(0,90,200,10)]);assert.equal(p.y,100);assert.equal(p.vy,0);
 });
-test('upper area is reachable only with high jump',()=>{
+test('only Explorer can reach the high pressure plate from the start',()=>{
   for(const [index,expected] of [[0,true],[1,false]]){
-    const s=make(),p=s.players[index];p.x=70;p.y=554;p.grounded=true;
-    let landed=false;
+    const s=make(),p=s.players[index];place(p,70);let landed=false;
     for(let f=0;f<150;f++){
-      const a=[idle(),idle()];a[index]={...idle(),jump:f===0,move:p.x<250?1:0};s.update(1/120,a);
+      const a=[idle(),idle()];a[index]={...idle(),jump:f===0,move:p.x<300?1:0};s.update(1/120,a);
       if(p.grounded&&p.y===404)landed=true;
     }
     assert.equal(landed,expected);
   }
 });
-test('puzzle needs both roles, correct hint, key, and joint exit action',()=>{
+test('first gate follows remote pressure plate and refuses to crush a crossing player',()=>{
   const s=make(),[a,b]=s.players;
-  b.x=315;s.interact(b);assert.equal(s.bridge.active,false);
-  a.x=285;a.y=404;s.interact(a);assert.equal(s.hint.state,'READ');
-  b.x=410;s.interact(b);assert.equal(s.bridge.active,false);
-  a.x=70;s.interact(b);assert.equal(s.bridge.active,false);
-  a.x=285;s.interact(a);b.x=315;s.interact(b);assert.equal(s.bridge.active,true);assert.equal(s.key.state,'VISIBLE');
-  b.x=680;b.y=244;s.interact(b);assert.equal(s.key.state,'VISIBLE');
-  a.x=680;a.y=244;s.interact(a);assert.equal(s.key.state,'COLLECTED');assert.equal(s.door.state,'UNLOCKED');
-  a.x=1090;a.y=554;b.x=700;b.y=554;
-  s.update(1/120,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}]);assert.equal(s.complete,false);
-  b.x=1050;s.update(1/120,[{...idle(),interactHeld:true},idle()]);assert.equal(s.complete,false);
-  s.update(1/120,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}]);assert.equal(s.complete,true);assert.equal(s.door.state,'OPEN');
+  place(b,400);step(s,[idle(),{...idle(),move:1}],.5);assert.equal(b.x,412);
+  place(a,300,404);step(s);assert.equal(s.gateA.active,false);
+  place(b,445);place(a,70);step(s);assert.equal(s.gateA.active,false,'occupied gate remains open');
+  place(b,480);step(s);assert.equal(s.gateA.active,true);
 });
-test('fresh stage resets objects; character choice does not change roles',()=>{
-  const s=make();assert.equal(s.players[0].character.id,'c');assert.equal(s.players[1].character.id,'a');assert.ok(s.players[0].abilities.readHint);assert.ok(s.players[1].abilities.operateSwitch);
-  s.bridge.active=true;s.key.reveal();const fresh=make();assert.equal(fresh.bridge.active,false);assert.equal(fresh.key.state,'HIDDEN');
+test('one shared cell powers the bridge only while docked, and can be returned after a failed transfer',()=>{
+  const s=make(),[a,b]=s.players;
+  place(a,185);s.interact(a);assert.equal(s.cell.state,'LOOSE');
+  dockA(s);assert.equal(s.cell.state,'SOCKET_A');assert.ok(s.bridge.active);assert.equal(s.phase,'TRANSFER');assert.equal(s.gateA.active,false);
+  s.interact(b);step(s);assert.equal(s.cell.state,'CARRIED');assert.equal(s.bridge.active,false);
+  s.interact(b);step(s);assert.equal(s.cell.state,'SOCKET_A');assert.ok(s.bridge.active);
 });
-test('full platform route reaches the key using movement and jumping',()=>{
-  const s=make(),[p,b]=s.players;
-  const walkTo=(x)=>{for(let f=0;f<400&&Math.abs(p.x-x)>2;f++)s.update(1/120,[{...idle(),move:Math.sign(x-p.x)},idle()]);};
-  const jumpTo=(x)=>{
-    for(let f=0;f<160;f++)s.update(1/120,[{...idle(),jump:f===0,move:Math.abs(p.x-x)>2?Math.sign(x-p.x):0},idle()]);
+test('second gate requires Explorer holding the remote winch; Tech cannot substitute',()=>{
+  const s=make(),[a,b]=s.players;dockA(s);
+  place(b,740,259);step(s,[idle(),{...idle(),interactHeld:true}]);assert.equal(s.gateB.active,true);
+  place(a,740,259);place(b,560);step(s,holding());assert.equal(s.gateB.active,false);
+  step(s);assert.equal(s.gateB.active,true);
+  step(s,holding());place(b,875);step(s);assert.equal(s.gateB.active,false);
+  place(b,920);step(s);assert.equal(s.gateB.active,true);
+});
+test('final charge needs two separate contacts and simultaneous sustained interaction',()=>{
+  const s=make(),[a,b]=s.players;dockB(s);assert.equal(s.phase,'CHARGE');assert.equal(s.gateB.active,false);
+  place(a,1035);place(b,950);step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}],3);assert.equal(s.charge,0);
+  place(b,1100);step(s,[{...idle(),interactHeld:true},idle()],3);assert.equal(s.charge,0);
+  const both=[{...idle(),interactHeld:true},{...idle(),interactHeld:true}];
+  step(s,both,1);assert.ok(s.charge>.9&&s.charge<1.1);step(s);assert.equal(s.charge,0);
+  step(s,both,2.6);assert.equal(s.phase,'EXIT');assert.equal(s.door.state,'UNLOCKED');assert.equal(s.complete,false);
+  place(a,1120);place(b,950);step(s,both);assert.equal(s.complete,false);
+  place(b,1150);step(s,both);assert.equal(s.complete,true);
+});
+test('only requested world hints reveal text, require entry, and follow progress',()=>{
+  const s=make();assert.equal(s.helpMarker,null);assert.equal(s.message,'');s.requestHint();step(s);assert.equal(s.message,'');assert.ok(s.helpMarker);
+  place(s.players[0],215);step(s);assert.equal(s.helpMarker,null);assert.match(s.message,/energiecel/);
+  s.requestHint();step(s);assert.ok(s.helpMarker,'standing on a new marker does not collect it');
+  dockA(s);assert.equal(s.helpMarker.id,'climb');place(s.players[0],670,259);step(s);assert.equal(s.helpMarker,null);assert.match(s.message,/vaste platform/);
+});
+test('fresh stage resets cell, charge and gates without changing character identity',()=>{
+  const s=make();dockB(s);s.requestHint();const fresh=make();assert.equal(fresh.cell.state,'LOOSE');assert.equal(fresh.charge,0);assert.equal(fresh.phase,'ENTRY');assert.equal(fresh.helpMarker,null);assert.equal(fresh.players[0].character.id,'c');assert.equal(fresh.players[1].character.id,'a');
+});
+test('full energy relay and exit are reachable using real movement, jumping, crouching and interactions',()=>{
+  const s=make(),[a,b]=s.players;
+  const walk=(i,x,{crouch=false,hold=false}={})=>{
+    for(let f=0;f<1500&&Math.abs(s.players[i].x-x)>2;f++){
+      const actions=hold?holding():[idle(),idle()];actions[i]={...actions[i],move:Math.sign(x-s.players[i].x),crouch};s.update(1/120,actions);
+    }
+    assert.ok(Math.abs(s.players[i].x-x)<=2,`P${i+1} reaches x=${x}, actual ${s.players[i].x}`);
   };
-  step(s,[idle(),idle()],0.2);jumpTo(280);assert.equal(p.y,404);
-  s.interact(p);b.x=315;s.interact(b);assert.ok(s.bridge.active);
-  walkTo(350);jumpTo(490);assert.equal(p.y,319);
-  jumpTo(680);assert.equal(p.y,244);s.interact(p);assert.equal(s.key.state,'COLLECTED');
+  const jump=x=>{for(let f=0;f<160;f++)s.update(1/120,[{...idle(),jump:f===0,move:Math.abs(a.x-x)>2?Math.sign(x-a.x):0},idle()]);};
+  const useTech=(hold=false)=>s.update(1/120,[{...idle(),interactHeld:hold},{...idle(),interact:true}]);
+  step(s);walk(1,185);useTech();assert.equal(s.cell.state,'CARRIED');
+  jump(300);assert.ok(s.plate.active);walk(1,560);useTech();assert.ok(s.bridge.active);
+  walk(0,350);jump(520);assert.equal(a.y,324);jump(720);assert.equal(a.y,259);walk(0,740);
+  useTech(true);assert.equal(s.cell.state,'CARRIED');assert.equal(s.bridge.active,false);
+  walk(1,625,{hold:true});walk(1,800,{crouch:true,hold:true});walk(1,980,{hold:true});useTech(true);assert.equal(s.phase,'CHARGE');
+  walk(0,1035);step(s,[idle(),idle()],1);walk(1,1100);
+  step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}],2.6);assert.equal(s.phase,'EXIT');
+  walk(0,1120);walk(1,1150);step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}]);assert.ok(s.complete);
 });

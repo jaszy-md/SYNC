@@ -7,7 +7,7 @@ export class InputManager {
     this.keys = new Set(); this.pressed = new Set(); this.previousPads = new Map(); this.assignments = [null,null];
     const codes = new Set([...KEYBOARD.flatMap(m=>Object.values(m)),'Escape']);
     target.addEventListener('keydown',e=>{
-      if (!codes.has(e.code) || /SELECT|INPUT|BUTTON/.test(e.target?.tagName)) return;
+      if (!codes.has(e.code) || (e.code!=='Escape' && /SELECT|INPUT|BUTTON/.test(e.target?.tagName))) return;
       e.preventDefault();
       if (!this.keys.has(e.code)) this.pressed.add(e.code);
       this.keys.add(e.code);

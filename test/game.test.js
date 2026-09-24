@@ -4,11 +4,12 @@ import {Stage1} from '../src/stages/stage1.js';
 import {CHARACTERS,Player} from '../src/player.js';
 import {Platform} from '../src/objects.js';
 const idle=()=>({move:0,jump:false,crouch:false,interact:false,interactHeld:false});
-const make=()=>new Stage1([CHARACTERS[2],CHARACTERS[0]]);
+const make=()=>new Stage1([CHARACTERS[2],CHARACTERS[0]],()=>0);
 const step=(s,actions=[idle(),idle()],seconds=.1)=>{for(let t=0;t<seconds;t+=1/120)s.update(1/120,actions);};
 const place=(p,x,y=554)=>Object.assign(p,{x,y,vx:0,vy:0,grounded:true});
 const holding=()=>[{...idle(),interactHeld:true},idle()];
-function dockA(s){place(s.players[1],185);s.interact(s.players[1]);place(s.players[1],560);s.interact(s.players[1]);step(s);}
+function releaseCell(s){place(s.players[0],340,404);s.interact(s.players[0]);for(const symbol of s.code){place(s.players[1],s.symbolSwitches.find(o=>o.symbol===symbol).x+8);s.interact(s.players[1]);}place(s.players[0],70);}
+function dockA(s){releaseCell(s);place(s.players[1],185);s.interact(s.players[1]);place(s.players[1],560);s.interact(s.players[1]);step(s);}
 function dockB(s){dockA(s);s.interact(s.players[1]);place(s.players[1],980);s.interact(s.players[1]);step(s);}
 
 test('independent movement, gravity, landing, jump and crouch clearance',()=>{
@@ -45,7 +46,7 @@ test('first gate follows remote pressure plate and refuses to crush a crossing p
 });
 test('one shared cell powers the bridge only while docked, and can be returned after a failed transfer',()=>{
   const s=make(),[a,b]=s.players;
-  place(a,185);s.interact(a);assert.equal(s.cell.state,'LOOSE');
+  place(a,185);s.interact(a);assert.equal(s.cell.state,'CAGED');
   dockA(s);assert.equal(s.cell.state,'SOCKET_A');assert.ok(s.bridge.active);assert.equal(s.phase,'TRANSFER');assert.equal(s.gateA.active,false);
   s.interact(b);step(s);assert.equal(s.cell.state,'CARRIED');assert.equal(s.bridge.active,false);
   s.interact(b);step(s);assert.equal(s.cell.state,'SOCKET_A');assert.ok(s.bridge.active);
@@ -64,18 +65,22 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   place(b,1100);step(s,[{...idle(),interactHeld:true},idle()],3);assert.equal(s.charge,0);
   const both=[{...idle(),interactHeld:true},{...idle(),interactHeld:true}];
   step(s,both,1);assert.ok(s.charge>.9&&s.charge<1.1);step(s);assert.equal(s.charge,0);
-  step(s,both,2.6);assert.equal(s.phase,'EXIT');assert.equal(s.door.state,'UNLOCKED');assert.equal(s.complete,false);
+  step(s,both,2.6);assert.equal(s.phase,'KEY');assert.equal(s.key.state,'VISIBLE');assert.equal(s.door.state,'LOCKED');assert.equal(s.complete,false);
+  place(a,1120);place(b,1150);s.interact(a);step(s,both);assert.equal(s.complete,false);assert.equal(s.door.state,'LOCKED');
+  place(b,1000,404);s.interact(b);assert.equal(s.key.state,'VISIBLE');
+  place(a,1000,404);s.interact(a);assert.equal(s.key.state,'COLLECTED');assert.equal(s.door.state,'LOCKED');
+  place(a,1120);s.interact(a);assert.equal(s.door.state,'UNLOCKED');
   place(a,1120);place(b,950);step(s,both);assert.equal(s.complete,false);
   place(b,1150);step(s,both);assert.equal(s.complete,true);
 });
 test('only requested world hints reveal text, require entry, and follow progress',()=>{
   const s=make();assert.equal(s.helpMarker,null);assert.equal(s.message,'');s.requestHint();step(s);assert.equal(s.message,'');assert.ok(s.helpMarker);
-  place(s.players[0],215);step(s);assert.equal(s.helpMarker,null);assert.match(s.message,/energiecel/);
+  place(s.players[0],215);step(s);assert.equal(s.helpMarker,null);assert.match(s.message,/batterij/);
   s.requestHint();step(s);assert.ok(s.helpMarker,'standing on a new marker does not collect it');
   dockA(s);assert.equal(s.helpMarker.id,'climb');place(s.players[0],670,259);step(s);assert.equal(s.helpMarker,null);assert.match(s.message,/vaste platform/);
 });
 test('fresh stage resets cell, charge and gates without changing character identity',()=>{
-  const s=make();dockB(s);s.requestHint();const fresh=make();assert.equal(fresh.cell.state,'LOOSE');assert.equal(fresh.charge,0);assert.equal(fresh.phase,'ENTRY');assert.equal(fresh.helpMarker,null);assert.equal(fresh.players[0].character.id,'c');assert.equal(fresh.players[1].character.id,'a');
+  const s=make();dockB(s);s.requestHint();const fresh=make();assert.equal(fresh.cell.state,'CAGED');assert.equal(fresh.charge,0);assert.equal(fresh.phase,'SYMBOLS');assert.equal(fresh.helpMarker,null);assert.equal(fresh.players[0].character.id,'c');assert.equal(fresh.players[1].character.id,'a');
 });
 test('full energy relay and exit are reachable using real movement, jumping, crouching and interactions',()=>{
   const s=make(),[a,b]=s.players;
@@ -87,12 +92,28 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   };
   const jump=x=>{for(let f=0;f<160;f++)s.update(1/120,[{...idle(),jump:f===0,move:Math.abs(a.x-x)>2?Math.sign(x-a.x):0},idle()]);};
   const useTech=(hold=false)=>s.update(1/120,[{...idle(),interactHeld:hold},{...idle(),interact:true}]);
-  step(s);walk(1,185);useTech();assert.equal(s.cell.state,'CARRIED');
-  jump(300);assert.ok(s.plate.active);walk(1,560);useTech();assert.ok(s.bridge.active);
+  step(s);jump(340);s.interact(a);
+  for(const symbol of s.code){walk(1,s.symbolSwitches.find(o=>o.symbol===symbol).x+8);useTech();}
+  assert.equal(s.cell.state,'LOOSE');walk(0,300);walk(1,185);useTech();assert.equal(s.cell.state,'CARRIED');
+  assert.ok(s.plate.active);walk(1,560);useTech();assert.ok(s.bridge.active);
   walk(0,350);jump(520);assert.equal(a.y,324);jump(720);assert.equal(a.y,259);walk(0,740);
   useTech(true);assert.equal(s.cell.state,'CARRIED');assert.equal(s.bridge.active,false);
   walk(1,625,{hold:true});walk(1,800,{crouch:true,hold:true});walk(1,980,{hold:true});useTech(true);assert.equal(s.phase,'CHARGE');
   walk(0,1035);step(s,[idle(),idle()],1);walk(1,1100);
-  step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}],2.6);assert.equal(s.phase,'EXIT');
-  walk(0,1120);walk(1,1150);step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}]);assert.ok(s.complete);
+  step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}],2.6);assert.equal(s.phase,'KEY');assert.equal(s.door.state,'LOCKED');
+  walk(0,870);jump(1005);assert.equal(a.y,404);s.interact(a);assert.equal(s.key.state,'COLLECTED');
+  walk(0,1120);step(s,[idle(),idle()],1);s.interact(a);assert.equal(s.door.state,'UNLOCKED');walk(1,1150);step(s,[{...idle(),interactHeld:true},{...idle(),interactHeld:true}]);assert.ok(s.complete);
+});
+
+test('symbol cage requires both roles, a present reader and the correct sequence',()=>{
+  const s=make(),[a,b]=s.players;
+  place(b,185);s.interact(b);assert.equal(s.cell.state,'CAGED');
+  const choose=symbol=>{place(b,s.symbolSwitches.find(o=>o.symbol===symbol).x+8);s.interact(b);};
+  choose(s.code[0]);assert.equal(s.matchIndex,0);
+  place(b,340,404);s.interact(b);assert.equal(s.symbolHint.state,'UNREAD');
+  place(a,340,404);s.interact(a);place(a,70);choose(s.code[0]);assert.equal(s.matchIndex,0);
+  place(a,340,404);choose(s.code[1]);assert.equal(s.matchIndex,0);
+  choose(s.code[0]);assert.equal(s.matchIndex,1);assert.equal(s.cell.state,'CAGED');
+  choose(s.code[0]);assert.equal(s.matchIndex,0);
+  choose(s.code[0]);choose(s.code[1]);assert.equal(s.phase,'ENTRY');assert.equal(s.cell.state,'LOOSE');
 });

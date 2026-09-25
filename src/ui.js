@@ -55,7 +55,7 @@ export function createUI({state,input,selected,start,resume,getStage}) {
   }
   function mainMenu(){panel=null;state.set(State.MENU);}
   function renderMenu(){
-    screen.innerHTML=`<div class="sheet hero"><div><span class="pill">LEVEL 1 · LOCAL CO-OP</span><h1 class="hero-logo"><img src="/assets/images/group-characters.png" alt="SYNC"></h1><div class="escape-title">ESCAPE CHAIN</div><p class="typing" aria-label="Can technology bring us back together?"><span aria-hidden="true" id="typed"></span></p>${button('start','Start Game ↗','primary')}<div class="menu-links">${button('controls','Controls','ghost')}${button('controllers','Controllers','ghost')}</div></div><div class="hero-art"><span class="spark">✦</span><img id="group-art" src="/assets/images/group-characters.png" alt="De SYNC characters samen"><span class="orbit-label">YOU + ME = SYNC</span></div></div>`;
+    screen.innerHTML=`<div class="sheet hero"><div><span class="pill">LEVEL 1 · LOCAL CO-OP</span><h1 class="hero-logo"><img src="/assets/images/group-characters.png" alt="SYNC"></h1><div class="escape-title">ESCAPE CHAIN</div><p class="typing" aria-label="Can technology bring us back together?"><span aria-hidden="true" id="typed"></span></p>${button('start','Start Game ↗','primary')}<div class="menu-links">${button('controls','Controls','ghost')}${button('controllers','Controllers','ghost')}</div></div><div class="hero-art"><span class="spark">✦</span><div class="crew">${CHARACTERS.map(avatar).join('')}</div><span class="orbit-label">YOU + ME = SYNC</span></div></div>`;
     const phrase='Can technology bring us back together?';
     const typed=document.querySelector('#typed');
     if(matchMedia('(prefers-reduced-motion: reduce)').matches)typed.textContent=phrase;

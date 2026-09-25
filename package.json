@@ -1,5 +1,5 @@
 {
-  "name": "sync-stage-one",
+  "name": "sync-level-one",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,12 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test"
+    "test": "node --test",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "check": "npm run lint && npm run format:check && npm test && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

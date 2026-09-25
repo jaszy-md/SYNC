@@ -1,5 +1,37 @@
 <!doctype html>
 <html lang="nl">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>SYNC · Ontdekken</title><link rel="stylesheet" href="/src/style.css"></head>
-<body><main id="app"><header><a class="brand" href="./" aria-label="SYNC startscherm"><span class="brand-word">SYNC</span><span class="brand-tag">ESCAPE CHAIN</span></a><div class="header-end"><span class="level-label">LEVEL 1 <i>/</i> ONTDEKKEN</span><button id="pause" class="secondary compact" hidden>Ⅱ Menu</button></div></header><div id="content"><section id="screen" aria-label="Spelmenu"></section><section id="game" hidden><div id="canvas-wrap"><canvas width="1200" height="660" aria-label="SYNC speelveld voor twee lokale spelers"></canvas><p id="hint-toast" role="status" hidden></p></div></section></div><footer><span class="status-dot"></span> TECHNISCH PROTOTYPE · 2 SPELERS · ÉÉN SCHERM</footer></main><script type="module" src="/src/main.js"></script></body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SYNC · Ontdekken</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <a class="brand" href="./" aria-label="SYNC startscherm"
+          ><span class="brand-word">SYNC</span><span class="brand-tag">ESCAPE CHAIN</span></a
+        >
+        <div class="header-end">
+          <span class="level-label">LEVEL 1 <i>/</i> ONTDEKKEN</span
+          ><button id="pause" class="secondary compact" hidden>Ⅱ Menu</button>
+        </div>
+      </header>
+      <div id="content">
+        <section id="screen" aria-label="Spelmenu"></section>
+        <section id="game" hidden>
+          <div id="canvas-wrap">
+            <canvas
+              width="1200"
+              height="660"
+              aria-label="SYNC speelveld voor twee lokale spelers"
+            ></canvas>
+            <p id="hint-toast" role="status" hidden></p>
+          </div>
+        </section>
+      </div>
+      <footer><span class="status-dot"></span> TECHNISCH PROTOTYPE · 2 SPELERS · ÉÉN SCHERM</footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>

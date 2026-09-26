@@ -1,16 +1,14 @@
-import {
-  completeView,
-  menuView,
-  rolesView,
-  characterSelectView,
-  readyView,
-  pauseView,
-  controlsView,
-  controllersView,
-  deviceCardsView,
-} from './ui/templates.js';
-import { State } from './gameState.js';
-import { CHARACTERS } from './player.js';
+import { updateCharacterAvatars } from './components/avatar.js';
+import { completeView } from './screens/completeScreen.js';
+import { menuView } from './screens/menuScreen.js';
+import { rolesView } from './screens/rolesScreen.js';
+import { characterSelectView } from './screens/characterSelectScreen.js';
+import { readyView } from './screens/readyScreen.js';
+import { pauseView } from './screens/pauseScreen.js';
+import { controlsView } from './screens/controlsScreen.js';
+import { controllersView, deviceCardsView } from './screens/controllersScreen.js';
+import { State } from '../core/gameState.js';
+import { CHARACTERS } from '../entities/player/characters.js';
 
 // UI-only navigation lives here; the central GameState still owns play/pause.
 export function createUI({ state, input, selected, start, resume, getStage }) {
@@ -20,6 +18,7 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
     setupStep = 0,
     activePlayer = 0,
     typingTimer;
+  const refreshAvatars = () => updateCharacterAvatars(screen, refreshAvatars);
   const bind = (id, fn) => document.getElementById(id)?.addEventListener('click', fn);
   // Shrink only when a compact panel still exceeds a short viewport. Transform
   // does not affect measured layout size, so ResizeObserver cannot oscillate.
@@ -72,6 +71,7 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
       bind('replay', start);
       bind('main-menu', mainMenu);
     }
+    refreshAvatars();
     bind('panel-back', closePanel);
     fitPanel();
     resizeObserver.observe(screen);

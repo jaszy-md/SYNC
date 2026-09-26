@@ -315,6 +315,16 @@ p {
   position: relative;
   filter: drop-shadow(0 8px 0 #080b2055);
 }
+.avatar.sprite:before,
+.avatar.sprite:after {
+  display: none;
+}
+.avatar.sprite img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .avatar:before {
   content: '';
   position: absolute;

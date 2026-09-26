@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Stage1 } from '../src/stages/stage1.js';
-import { CHARACTERS, Player } from '../src/player.js';
-import { Platform } from '../src/objects.js';
+import { Stage1 } from '../src/stages/stage01/stage01.js';
+import { Player } from '../src/entities/player/createPlayer.js';
+import { CHARACTERS } from '../src/entities/player/characters.js';
+import { Platform } from '../src/entities/objects/platform.js';
 const idle = () => ({ move: 0, jump: false, crouch: false, interact: false, interactHeld: false });
 const make = () => new Stage1([CHARACTERS[2], CHARACTERS[0]], () => 0);
 const step = (s, actions = [idle(), idle()], seconds = 0.1) => {
@@ -13,8 +14,8 @@ const holding = () => [{ ...idle(), interactHeld: true }, idle()];
 function releaseCell(s) {
   place(s.players[0], 340, 404);
   s.interact(s.players[0]);
-  for (const symbol of s.code) {
-    place(s.players[1], s.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+  for (const symbol of s.symbolPuzzle.code) {
+    place(s.players[1], s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
     s.interact(s.players[1]);
   }
   place(s.players[0], 70);
@@ -266,8 +267,8 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   step(s);
   jump(340);
   s.interact(a);
-  for (const symbol of s.code) {
-    walk(1, s.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+  for (const symbol of s.symbolPuzzle.code) {
+    walk(1, s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
     useTech();
   }
   assert.equal(s.cell.state, 'LOOSE');
@@ -330,29 +331,29 @@ test('symbol cage requires both roles, a present reader and the correct sequence
   s.interact(b);
   assert.equal(s.cell.state, 'CAGED');
   const choose = (symbol) => {
-    place(b, s.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+    place(b, s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
     s.interact(b);
   };
-  choose(s.code[0]);
-  assert.equal(s.matchIndex, 0);
+  choose(s.symbolPuzzle.code[0]);
+  assert.equal(s.symbolPuzzle.matchIndex, 0);
   place(b, 340, 404);
   s.interact(b);
-  assert.equal(s.symbolHint.state, 'UNREAD');
+  assert.equal(s.symbolPuzzle.symbolHint.state, 'UNREAD');
   place(a, 340, 404);
   s.interact(a);
   place(a, 70);
-  choose(s.code[0]);
-  assert.equal(s.matchIndex, 0);
+  choose(s.symbolPuzzle.code[0]);
+  assert.equal(s.symbolPuzzle.matchIndex, 0);
   place(a, 340, 404);
-  choose(s.code[1]);
-  assert.equal(s.matchIndex, 0);
-  choose(s.code[0]);
-  assert.equal(s.matchIndex, 1);
+  choose(s.symbolPuzzle.code[1]);
+  assert.equal(s.symbolPuzzle.matchIndex, 0);
+  choose(s.symbolPuzzle.code[0]);
+  assert.equal(s.symbolPuzzle.matchIndex, 1);
   assert.equal(s.cell.state, 'CAGED');
-  choose(s.code[0]);
-  assert.equal(s.matchIndex, 0);
-  choose(s.code[0]);
-  choose(s.code[1]);
+  choose(s.symbolPuzzle.code[0]);
+  assert.equal(s.symbolPuzzle.matchIndex, 0);
+  choose(s.symbolPuzzle.code[0]);
+  choose(s.symbolPuzzle.code[1]);
   assert.equal(s.phase, 'ENTRY');
   assert.equal(s.cell.state, 'LOOSE');
 });

@@ -1,8 +1,8 @@
-import { State, GameState } from './gameState.js';
-import { InputManager } from './input.js';
-import { CHARACTERS } from './player.js';
-import { StageManager } from './stageManager.js';
-import { createUI } from './ui.js';
+import { State, GameState } from './core/gameState.js';
+import { InputManager } from './core/input.js';
+import { CHARACTERS } from './entities/player/characters.js';
+import { StageManager } from './core/stageManager.js';
+import { createUI } from './ui/ui.js';
 
 const canvas = document.querySelector('canvas'),
   ctx = canvas.getContext('2d');

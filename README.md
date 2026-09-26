@@ -29,7 +29,10 @@ npm run check        # Lint, opmaak, tests en productiebuild
 
 Prettier gebruikt puntkomma's, enkele quotes, twee spaties en een richtbreedte van 100 tekens. Gegenereerde mappen worden overgeslagen.
 
-- `src/ui.js` bevat navigatie en event handlers; `src/ui/templates.js` bouwt de bijbehorende HTML.
+- `src/ui/ui.js` bevat navigatie en event handlers; `src/ui/screens/` bevat de schermtemplates en `src/ui/components/` de gedeelde HTML-functies.
 - `src/style.css` bevat de vormgeving; dynamische characterkleuren en viewport-schaling blijven runtime-waarden.
-- `src/stages/stage1.js` bevat de puzzelregels; `src/stages/stage1View.js` tekent dezelfde wereld op Canvas.
-- `src/stageManager.js` selecteert de stage. Toekomstige stages krijgen eigen modules, zonder de regels van Stage 1 te vermengen.
+- `src/stages/stage01/stage01.js` bevat de puzzelregels; `stage01View.js` in dezelfde map tekent de wereld op Canvas. `stage01Config.js`, `players/abilities.js` en `stage01ObjectSetup.js` bevatten de stageconfiguratie, spelerabilities en objectplaatsing.
+- `src/core/` bevat gamestate, input en stagekeuze; `src/core/physics/` bevat collisiondetectie en bewegingsresolutie.
+- `src/entities/player/` bevat de bestaande playerclass, beweging en rendering; `src/entities/objects/` bevat één bestand per bestaand objecttype.
+- `public/assets/characters/character-a/` t/m `character-d/` zijn bedoeld voor `select.png`, `idle.png`, `walk.png`, `jump.png` en `crouch.png`. Ontbrekende poses gebruiken de bestaande vormen als fallback. Voeg bestanden toe vóór het bouwen; herlaad de pagina na het toevoegen van eerder ontbrekende bestanden.
+- `public/assets/images/home/group-characters.png` bevat de homepage-afbeelding.

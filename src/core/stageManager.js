@@ -1,4 +1,4 @@
-import { Stage1 } from './stages/stage1.js';
+import { Stage1 } from '../stages/stage01/stage01.js';
 const stages = { 1: Stage1 };
 export class StageManager {
   load(id, characters) {

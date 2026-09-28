@@ -103,6 +103,10 @@ function drawDebugOverlay(elapsed) {
 function frame(time) {
   const elapsed = Math.min((time - lastTime) / 1000, 0.05);
   lastTime = time;
+  const navigation = input.sampleUI();
+  if (state.current === State.PLAYING) {
+    if (navigation.menu) document.querySelector('#pause').click();
+  } else ui.navigate(navigation);
   if (input.pressed.has('Escape')) {
     if (state.current === State.PLAYING) pause();
     else if (!ui.closePanel() && state.current === State.PAUSED) resume();

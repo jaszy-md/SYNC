@@ -34,7 +34,7 @@ export function readyView(selected, assignments) {
       )
       .join('') +
     '</div>' +
-    '<div class="note">Alleen 2 spelers · Praat met elkaar. Extra hulp vind je tijdens het spelen in Menu → Vraag een hint.</div>' +
+    '<div class="connected-controller flow-info"><strong>Praat met elkaar</strong><span>Alleen 2 spelers · Extra hulp vind je tijdens het spelen in Menu → Vraag een hint.</span></div>' +
     ('<div class="menu-links">' +
       button('controls', 'Controls bekijken', 'ghost') +
       button('controllers', 'Controllers koppelen', 'ghost') +

@@ -47,9 +47,9 @@ button:hover {
 button:active {
   transform: translateY(1px);
 }
-button:focus-visible,
-a:focus-visible,
-select:focus-visible {
+button:focus,
+a:focus,
+select:focus {
   outline: 3px solid var(--yellow);
   outline-offset: 3px;
 }
@@ -66,6 +66,13 @@ button.secondary {
 button.compact {
   padding: 8px 14px;
   font-size: 13px;
+}
+#pause {
+  border-radius: 14px 9px 14px 9px;
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #10172b;
+  letter-spacing: 0.04em;
 }
 button.ghost {
   background: transparent;
@@ -544,14 +551,163 @@ kbd {
   box-shadow: 0 2px #090d20;
 }
 .device-select {
+  position: relative;
   display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-top: 12px;
   background: #11172c;
   color: #eef4ff;
   border: 1px solid #505776;
   border-radius: 10px;
-  padding: 12px;
+  padding: 12px 32px 12px 12px;
+  text-align: left;
+  font-weight: 500;
+}
+.device-select::after {
+  content: '⌄';
+  position: absolute;
+  right: 12px;
+  color: var(--cyan);
+}
+.device-select:hover,
+.device-select:active {
+  transform: none;
+}
+.device-select[aria-expanded='true'] {
+  border-color: var(--cyan);
+}
+#pads .card {
+  min-width: 0;
+}
+.device-options {
+  position: fixed;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid #505776;
+  border-radius: 10px;
+  background: #11172c;
+  box-shadow: 0 10px 28px #0008;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.device-options:popover-open {
+  display: grid;
+  gap: 4px;
+  animation: device-options-open 0.14s ease-out;
+}
+.device-options button {
+  min-width: 0;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 7px;
+  background: transparent;
+  color: #eef4ff;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: none;
+}
+.device-options button[aria-selected='true'] {
+  color: var(--cyan);
+  background: #64e4ff12;
+}
+.device-options button:hover,
+.device-options button:focus {
+  background: #64e4ff24;
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+@keyframes device-options-open {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .device-options:popover-open {
+    animation: none;
+  }
+}
+.detection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  color: var(--cyan);
+  font-size: 12px;
+}
+.controller-spinner {
+  display: none;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+}
+.detection-status[aria-busy='true'] .controller-spinner {
+  display: inline-block;
+  animation: controller-spin 0.7s linear infinite;
+}
+@keyframes controller-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detection-status[aria-busy='true'] .controller-spinner {
+    animation: none;
+  }
+}
+.connected-pads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.connected-controller {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #11172c;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.detection-status.connected-controller {
+  display: flex;
+}
+.flow-info {
+  margin-top: 20px;
+  margin-bottom: 16px;
+}
+.flow-info strong {
+  color: var(--cyan);
+  font-size: 13px;
+}
+.flow-info span {
+  color: var(--muted);
+}
+.connected-controller[data-assigned] {
+  border-color: var(--cyan);
+}
+.controller-name {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.connected-controller small {
+  color: var(--cyan);
 }
 .device-status {
   margin-top: 10px;

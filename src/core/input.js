@@ -13,7 +13,17 @@ export class InputManager {
     this.keys = new Set();
     this.pressed = new Set();
     this.previousPads = new Map();
+    this.previousUI = new Map();
     this.assignments = [null, null];
+    this.padSessions = new Map();
+    this.nextPadSession = 0;
+    target.addEventListener('gamepaddisconnected', ({ gamepad }) => {
+      if (this.padSessions.get(gamepad.index)?.id === gamepad.id) this.forgetPad(gamepad.index);
+    });
+    target.addEventListener('gamepadconnected', ({ gamepad }) => {
+      this.forgetPad(gamepad.index);
+      this.pads();
+    });
     const codes = new Set([...KEYBOARD.flatMap((m) => Object.values(m)), 'Escape']);
     target.addEventListener('keydown', (e) => {
       if (
@@ -29,7 +39,66 @@ export class InputManager {
     target.addEventListener('blur', () => this.clear());
   }
   pads() {
-    return Array.from(navigator.getGamepads?.() ?? []).filter(Boolean);
+    const pads = Array.from(navigator.getGamepads?.() ?? []).filter(
+      (pad) => pad && pad.connected !== false,
+    );
+    for (const [index, session] of this.padSessions) {
+      if (!pads.some((pad) => pad.index === index && pad.id === session.id)) this.forgetPad(index);
+    }
+    let detected = false;
+    for (const pad of pads) {
+      if (!this.padSessions.has(pad.index)) {
+        this.padSessions.set(pad.index, { id: pad.id, serial: ++this.nextPadSession });
+        detected = true;
+      }
+    }
+    if (detected && this.assignments[0] === null) {
+      this.assignments[0] =
+        pads.find((pad) => !this.assignments.includes(pad.index))?.index ?? null;
+    }
+    return pads;
+  }
+  forgetPad(index) {
+    this.assignments = this.assignments.map((assigned, player) => {
+      if (assigned !== index) return assigned;
+      this.previousPads.delete(player);
+      return null;
+    });
+    this.padSessions.delete(index);
+    this.previousUI.delete(index);
+  }
+  sampleUI() {
+    const pads = this.pads();
+    const actions = { direction: 0, confirm: false, back: false, menu: false };
+    const previous = this.previousUI;
+    this.previousUI = new Map();
+    for (const pad of pads) {
+      const buttons = pad.buttons.map((button) => button.pressed);
+      const direction = buttons[12]
+        ? 'up'
+        : buttons[13]
+          ? 'down'
+          : buttons[14]
+            ? 'left'
+            : buttons[15]
+              ? 'right'
+              : Math.max(Math.abs(pad.axes[0] ?? 0), Math.abs(pad.axes[1] ?? 0)) <= 0.5
+                ? 0
+                : Math.abs(pad.axes[0] ?? 0) > Math.abs(pad.axes[1] ?? 0)
+                  ? pad.axes[0] < 0
+                    ? 'left'
+                    : 'right'
+                  : pad.axes[1] < 0
+                    ? 'up'
+                    : 'down';
+      const last = previous.get(pad.index);
+      if (direction && direction !== last?.direction) actions.direction = direction;
+      actions.confirm ||= !!buttons[0] && !last?.buttons[0];
+      actions.back ||= !!buttons[1] && !last?.buttons[1];
+      actions.menu ||= !!buttons[9] && !last?.buttons[9];
+      this.previousUI.set(pad.index, { buttons, direction });
+    }
+    return actions;
   }
   sample() {
     const pads = this.pads();
@@ -45,7 +114,7 @@ export class InputManager {
       return {
         move: Math.max(-1, Math.min(1, Number(held('right')) - Number(held('left')) + padMove)),
         jump: pressed('jump') || !!(buttons[0] && !previous[0]),
-        crouch: held('crouch') || !!buttons[13],
+        crouch: held('crouch') || !!buttons[1] || !!buttons[13],
         interact: pressed('interact') || !!(buttons[2] && !previous[2]),
         interactHeld: held('interact') || !!buttons[2],
       };

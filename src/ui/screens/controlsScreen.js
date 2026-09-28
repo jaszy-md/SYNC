@@ -43,12 +43,12 @@ export function controlsView(rows, controlsTab) {
         )
         .join('') +
       '</div>') +
-    ('<div class="note">' +
+    ('<div class="connected-controller flow-info"><strong>Bediening & pauze</strong><span>' +
       (controlsTab === 'keyboard'
         ? 'Pauze via de Menu-knop of Esc. Bij de uitgang: samen E + Enter vasthouden.'
-        : 'Standaard gamepad: onderste knop = springen, linker knop = interactie. Koppel elke controller via Controllers; keyboard blijft beschikbaar.') +
-      '</div>') +
-    ('<div class="actions">' + back() + button('devices', 'Controllers →', 'ghost') + '</div>') +
+        : 'Gamepad: A = springen, B = bukken, X = interactie, Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug. Koppel elke controller via Controllers; keyboard blijft beschikbaar.') +
+      '</span></div>') +
+    ('<div class="actions">' + back() + button('save-controls', 'Opslaan', 'primary') + '</div>') +
     '</div>'
   );
 }

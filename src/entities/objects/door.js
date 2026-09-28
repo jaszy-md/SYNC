@@ -8,14 +8,14 @@ export class Door {
     if (this.state === 'LOCKED') this.state = 'UNLOCKED';
   }
   open(players, inputs) {
-    if (
-      this.state !== 'LOCKED' &&
-      players.every((p, i) => near(p, this, 40) && inputs[i].interactHeld)
-    ) {
+    if (this.canOpen(players) && players.every((_, i) => inputs[i].interactHeld)) {
       this.state = 'OPEN';
       return true;
     }
     return false;
+  }
+  canOpen(players) {
+    return this.state !== 'LOCKED' && players.every((p) => near(p, this, 40));
   }
   draw(ctx) {
     ctx.fillStyle = this.state === 'LOCKED' ? '#533251' : '#355376';

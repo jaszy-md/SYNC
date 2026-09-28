@@ -1,5 +1,5 @@
 import { State, GameState } from './core/gameState.js';
-import { InputManager } from './core/input.js';
+import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
 import { StageManager } from './core/stageManager.js';
 import { createUI } from './ui/ui.js';
@@ -77,7 +77,7 @@ function updateSimulation() {
 }
 
 function renderGame(elapsed) {
-  stage.draw(ctx, debug);
+  stage.draw(ctx, debug, interactionBindings(input.assignments));
   hintSeconds = Math.max(0, hintSeconds - elapsed);
   hintToast.hidden = hintSeconds === 0;
   if (debug) drawDebugOverlay(elapsed);

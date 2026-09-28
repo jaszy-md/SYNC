@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { InputManager } from '../src/core/input.js';
+import { InputManager, inputMethods, KEYBOARD } from '../src/core/input.js';
 import { directionalTarget } from '../src/ui/ui.js';
 import {
   connectedPadsView,
   deviceCardsView,
   controllerStatus,
 } from '../src/ui/screens/controllersScreen.js';
+import { readyView } from '../src/ui/screens/readyScreen.js';
+import { controlsView } from '../src/ui/screens/controlsScreen.js';
 
 const nodeAt = (left, top, width = 80, height = 40) => ({
   getBoundingClientRect: () => ({
@@ -97,7 +99,7 @@ test('D-pad and dominant stick axis expose four directional edges; action mappin
   assert.equal(input.sample()[0].crouch, true);
   pad.buttons[1].pressed = false;
   input.keys.add('KeyS');
-  assert.equal(input.sample()[0].crouch, true);
+  assert.equal(input.sample()[0].crouch, false);
 });
 
 test('two equal-name controllers have separate sessions; disconnect clears only the matching assignment', (t) => {
@@ -192,4 +194,141 @@ test('dropdowns omit the other player controller and status includes the two-pla
   assert.equal(controllerStatus(0), 'Geen controllers verbonden (max. 2)');
   assert.equal(controllerStatus(1), '1 controller verbonden (max. 2)');
   assert.equal(controllerStatus(2), '2 controllers verbonden (max. 2)');
+});
+
+test('assignments determine one input source and unique keyboard layouts for every combination', (t) => {
+  const pads = [padAt(2), padAt(5)];
+  const { input } = setup(t, pads);
+  const idle = { move: 0, jump: false, crouch: false, interact: false, interactHeld: false };
+  for (const [assignments, layouts] of [
+    [
+      [null, null],
+      [0, 1],
+    ],
+    [
+      [2, null],
+      [null, 1],
+    ],
+    [
+      [null, 5],
+      [1, null],
+    ],
+    [
+      [2, 5],
+      [null, null],
+    ],
+  ]) {
+    input.assignments = assignments;
+    assert.deepEqual(
+      inputMethods(assignments).map((method) => method.layout ?? null),
+      layouts,
+    );
+    const activeLayouts = layouts.filter((layout) => layout !== null);
+    assert.equal(new Set(activeLayouts).size, activeLayouts.length);
+    input.clear();
+    for (const mapping of KEYBOARD) {
+      for (const action of ['right', 'jump', 'crouch', 'interact']) {
+        input.keys.add(mapping[action]);
+        input.pressed.add(mapping[action]);
+      }
+    }
+    const actions = input.sample();
+    layouts.forEach((layout, player) => {
+      assert.deepEqual(
+        actions[player],
+        layout === null
+          ? idle
+          : {
+              move: 1,
+              jump: true,
+              crouch: true,
+              interact: true,
+              interactHeld: true,
+            },
+      );
+    });
+    input.clear();
+    input.keys.add('KeyD');
+    assert.deepEqual(
+      input.sample().map((action) => action.move),
+      layouts.map((layout) => (layout === 0 ? 1 : 0)),
+    );
+    input.clear();
+    input.keys.add('ArrowRight');
+    assert.deepEqual(
+      input.sample().map((action) => action.move),
+      layouts.map((layout) => (layout === 1 ? 1 : 0)),
+    );
+  }
+  input.clear();
+  input.assignments = [2, 5];
+  pads[0].axes[0] = 1;
+  pads[0].buttons[0].pressed = pads[0].buttons[1].pressed = pads[0].buttons[2].pressed = true;
+  const actions = input.sample();
+  assert.deepEqual(actions[0], {
+    move: 1,
+    jump: true,
+    crouch: true,
+    interact: true,
+    interactHeld: true,
+  });
+  assert.deepEqual(actions[1], idle);
+});
+
+test('disconnect restores Arrow Keys for the remaining keyboard player and WASD/arrows when both disconnect', (t) => {
+  const first = padAt(2),
+    second = padAt(5);
+  const pads = [first, second];
+  const { input, emit } = setup(t, pads);
+  input.assignments = [2, 5];
+  pads[0] = null;
+  emit('gamepaddisconnected', first);
+  input.keys.add('ArrowRight');
+  assert.deepEqual(inputMethods(input.assignments), [
+    { type: 'keyboard', layout: 1 },
+    { type: 'controller', index: 5 },
+  ]);
+  assert.deepEqual(
+    input.sample().map((action) => action.move),
+    [1, 0],
+  );
+  pads[1] = null;
+  emit('gamepaddisconnected', second);
+  assert.deepEqual(inputMethods(input.assignments), [
+    { type: 'keyboard', layout: 0 },
+    { type: 'keyboard', layout: 1 },
+  ]);
+  assert.deepEqual(
+    input.sample().map((action) => action.move),
+    [0, 1],
+  );
+});
+
+test('assignment and ready views show the actual keyboard layout and no keyboard choice for controller players', () => {
+  for (const assignments of [
+    [2, null],
+    [null, 5],
+    [2, 5],
+    [null, null],
+  ]) {
+    const html = deviceCardsView([0, 1], assignments, [padAt(2), padAt(5)]);
+    const methods = inputMethods(assignments);
+    methods.forEach((method, player) => {
+      const options = html.match(
+        new RegExp(`<div id="device-options-${player}"[^>]*>(.*?)<\\/div>`, 's'),
+      )[1];
+      if (method.type === 'controller') {
+        assert.doesNotMatch(options, /Keyboard|WASD|Pijltjestoetsen/);
+        assert.match(options, /Controller vrijgeven/);
+      } else assert.match(options, new RegExp(method.layout === 0 ? 'WASD' : 'Pijltjestoetsen'));
+    });
+    const ready = readyView([0, 1], assignments);
+    assert.equal(
+      (ready.match(/Pijltjestoetsen/g) ?? []).length,
+      methods.some((method) => method.layout === 1) ? 1 : 0,
+    );
+  }
+  const controls = controlsView([null, ['← / →', '↑', '↓', 'Enter']], 'keyboard');
+  assert.match(controls, /Controller actief · Geen keyboardbesturing/);
+  assert.doesNotMatch(controls.split('<h3>Player 2')[0], /<kbd>/);
 });

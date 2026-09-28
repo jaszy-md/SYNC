@@ -52,8 +52,7 @@ export class Stage1 {
     this.plate.update([explorer]);
     const transferred = ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase);
     const delivered = ['CHARGE', 'KEY', 'EXIT'].includes(this.phase);
-    this.winch.active =
-      transferred && near(explorer, this.winch, 12) && inputs[explorer.id].interactHeld;
+    this.winch.active = this.canOperateWinch(explorer) && inputs[explorer.id].interactHeld;
     this.setGate(this.gateA, transferred || this.plate.active);
     this.setGate(this.gateB, delivered || this.winch.active);
     this.bridge.active = this.cell.state === 'SOCKET_A';
@@ -65,11 +64,23 @@ export class Stage1 {
       this.cell.y = carrier.y + 8;
     }
   }
+  canOperateWinch(player) {
+    return (
+      ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase) &&
+      player.abilities.operateWinch &&
+      near(player, this.winch, 12)
+    );
+  }
+  canCharge() {
+    return this.phase === 'CHARGE' && this.chargePads.every((pad) => pad.active);
+  }
+  canExit() {
+    return this.phase === 'EXIT' && this.players.every((player) => this.exit.contains(player));
+  }
   updateCharging(dt, inputs) {
     this.chargePads.forEach((pad, i) => pad.update([this.players[i]]));
     if (this.phase === 'CHARGE') {
-      const together =
-        this.chargePads.every((p) => p.active) && inputs.every((i) => i.interactHeld);
+      const together = this.canCharge() && inputs.every((i) => i.interactHeld);
       this.charge = together ? Math.min(2.5, this.charge + dt) : 0;
       if (this.charge >= 2.5) {
         this.phase = 'KEY';
@@ -79,12 +90,7 @@ export class Stage1 {
     }
   }
   updateExit(inputs) {
-    if (
-      this.phase === 'EXIT' &&
-      this.players.every((p) => this.exit.contains(p)) &&
-      this.door.open(this.players, inputs)
-    )
-      this.complete = true;
+    if (this.canExit() && this.door.open(this.players, inputs)) this.complete = true;
   }
   updateRequestedHint() {
     if (this.helpMarker) {
@@ -103,9 +109,11 @@ export class Stage1 {
     // Never close a sluice through a player. Leaving it closes it safely.
     gate.active = !open && !this.players.some((p) => overlaps(p, gate));
   }
-  interact(player) {
+  // Preview follows the same guards and priority, returning a target without effects.
+  interact(player, preview = false) {
     if (this.phase === 'SYMBOLS') {
-      const result = this.symbolPuzzle.interact(player, this.players);
+      const result = this.symbolPuzzle.interact(player, this.players, preview);
+      if (preview && result) return typeof result === 'object' ? result : null;
       if (result === 'COMPLETE') {
         this.cell.state = 'LOOSE';
         this.phase = 'ENTRY';
@@ -114,16 +122,22 @@ export class Stage1 {
       }
       if (result) return;
     }
-    if (this.phase === 'KEY' && this.key.collect(player)) {
+    if (
+      this.phase === 'KEY' &&
+      (preview ? this.key.canCollect(player) : this.key.collect(player))
+    ) {
+      if (preview) return this.key;
       this.keyCarrier = player.id;
       this.phase = 'EXIT';
       return;
     }
     if (this.phase === 'EXIT' && player.id === this.keyCarrier && near(player, this.door, 40)) {
+      if (preview) return this.door.state === 'LOCKED' ? this.door : null;
       this.door.unlock();
       return;
     }
     if (!player.abilities.carryCell) {
+      if (preview) return null;
       if (
         near(player, this.cell, 20) ||
         near(player, this.socketA, 18) ||
@@ -133,14 +147,19 @@ export class Stage1 {
       return;
     }
     if (this.cell.state === 'LOOSE' && near(player, this.cell, 20)) {
+      if (preview) return this.cell;
       this.cell.state = 'CARRIED';
       return;
     }
     if (near(player, this.socketA, 18)) {
       if (this.cell.state === 'CARRIED' && ['ENTRY', 'TRANSFER'].includes(this.phase)) {
+        if (preview) return this.socketA;
         this.cell.state = 'SOCKET_A';
         this.phase = 'TRANSFER';
-      } else if (this.cell.state === 'SOCKET_A') this.cell.state = 'CARRIED';
+      } else if (this.cell.state === 'SOCKET_A') {
+        if (preview) return this.socketA;
+        this.cell.state = 'CARRIED';
+      }
       return;
     }
     if (
@@ -148,6 +167,7 @@ export class Stage1 {
       this.cell.state === 'CARRIED' &&
       this.phase === 'TRANSFER'
     ) {
+      if (preview) return this.socketB;
       this.cell.state = 'SOCKET_B';
       this.phase = 'CHARGE';
     }
@@ -155,7 +175,7 @@ export class Stage1 {
   requestHint() {
     this.helpMarker = new HelpMarker(getStage01Hint(this));
   }
-  draw(ctx, debug = false) {
-    drawStage1(ctx, this, debug);
+  draw(ctx, debug = false, bindings = []) {
+    drawStage1(ctx, this, debug, bindings);
   }
 }

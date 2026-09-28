@@ -1,4 +1,5 @@
 import { stage01Config } from './stage01Config.js';
+import { drawStage01ControlHints } from './hints/controlHints.js';
 
 function drawBackground(ctx) {
   ctx.clearRect(0, 0, stage01Config.width, stage01Config.height);
@@ -83,8 +84,6 @@ function drawChargeIndicator(ctx, stage) {
   ctx.fillStyle = stage.phase === 'EXIT' ? '#64e4ff' : '#ffdc79';
   ctx.font = 'bold 22px monospace';
   ctx.fillText(stage.phase === 'EXIT' ? '✓' : '↯', 1058, 503);
-  ctx.font = '12px monospace';
-  ctx.fillText('E + ↵', 1050, 540);
 }
 
 function drawPlayersAndItems(ctx, stage) {
@@ -104,8 +103,6 @@ function drawAffordances(ctx, stage) {
   ctx.fillStyle = '#b9afd1';
   ctx.font = '12px monospace';
   ctx.fillText('P1 ↓', 294, 430);
-  ctx.fillText('P1 [E]', 733, 247);
-  if (stage.cell.state === 'LOOSE') ctx.fillText('P2 [↵]', 172, 551);
   ctx.fillText('↓', 703, 522);
   if (stage.ping && stage.ping.until > stage.time) {
     ctx.fillStyle = '#f379d0';
@@ -114,7 +111,7 @@ function drawAffordances(ctx, stage) {
   }
 }
 
-export function drawStage1(ctx, stage, debug = false) {
+export function drawStage1(ctx, stage, debug = false, bindings = []) {
   drawBackground(ctx);
   drawConnections(ctx, stage);
   drawWorldObjects(ctx, stage);
@@ -128,6 +125,7 @@ export function drawStage1(ctx, stage, debug = false) {
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
   stage.helpMarker?.draw(ctx, stage.time);
+  drawStage01ControlHints(ctx, stage, bindings);
   if (debug) {
     ctx.strokeStyle = '#ff7493';
     [

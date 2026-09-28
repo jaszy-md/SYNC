@@ -2,8 +2,10 @@ import { button } from '../components/button.js';
 import { avatar } from '../components/avatar.js';
 import { heading } from '../components/heading.js';
 import { CHARACTERS } from '../../entities/player/characters.js';
+import { inputMethods, inputMethodLabel } from '../../core/input.js';
 
 export function readyView(selected, assignments) {
+  const methods = inputMethods(assignments);
   return (
     '<div class="sheet narrow">' +
     heading(
@@ -25,7 +27,7 @@ export function readyView(selected, assignments) {
             '</span>') +
           ('<h3>' + CHARACTERS[s].name + '</h3>') +
           ('<p>' +
-            (assignments[i] === null ? 'Keyboard' : 'Controller ' + (assignments[i] + 1)) +
+            inputMethodLabel(methods[i]) +
             ' · ' +
             (i === 0 ? 'Drukplaat & lier' : 'Energiecel') +
             '</p>') +

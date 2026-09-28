@@ -13,8 +13,12 @@ export class SymbolPuzzle {
     this.matchIndex = 0;
     this.ping = null;
   }
-  interact(player, players) {
+  interact(player, players, preview = false) {
     if (near(player, this.symbolHint, 18)) {
+      if (preview)
+        return this.symbolHint.state === 'UNREAD' && this.symbolHint.canRead(player)
+          ? this.symbolHint
+          : 'HANDLED';
       this.symbolHint.read(player);
       return 'HANDLED';
     }
@@ -27,6 +31,7 @@ export class SymbolPuzzle {
         !near(reader, this.symbolHint, 25)
       )
         return 'HANDLED';
+      if (preview) return target;
       if (target.activate(player, target.symbol === this.code[this.matchIndex]) === 'ON') {
         if (++this.matchIndex === this.code.length) {
           return 'COMPLETE';

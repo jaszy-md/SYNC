@@ -9,6 +9,7 @@ import { controlsView } from './screens/controlsScreen.js';
 import { controllersView, deviceCardsView, controllerStatus } from './screens/controllersScreen.js';
 import { State } from '../core/gameState.js';
 import { CHARACTERS } from '../entities/player/characters.js';
+import { inputMethods } from '../core/input.js';
 
 export function directionalTarget(nodes, current, direction) {
   if (!nodes.includes(current)) return nodes[0];
@@ -206,12 +207,15 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
   }
 
   function renderControls() {
+    const keyboardRows = [
+      ['A / D', 'W', 'S', 'E'],
+      ['← / →', '↑', '↓', 'Enter'],
+    ];
     const rows =
       controlsTab === 'keyboard'
-        ? [
-            ['A / D', 'W', 'S', 'E'],
-            ['← / →', '↑', '↓', 'Enter'],
-          ]
+        ? inputMethods(input.assignments).map((method) =>
+            method.type === 'keyboard' ? keyboardRows[method.layout] : null,
+          )
         : [
             ['Stick / D-pad', 'A / ✕', 'B / ○', 'X / □'],
             ['Stick / D-pad', 'A / ✕', 'B / ○', 'X / □'],
@@ -390,7 +394,14 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
   }
   function refreshPads() {
     input.pads();
-    if (panel !== 'controllers') return;
+    if (panel !== 'controllers') {
+      if (panel === 'controls' || (!panel && state.current === State.SETUP && setupStep === 2)) {
+        const focusId = document.activeElement?.id;
+        render();
+        document.getElementById(focusId)?.focus({ preventScroll: true });
+      }
+      return;
+    }
     const sessions = input.padSessions;
     if (
       sessions.size === deviceSessions.size &&

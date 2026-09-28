@@ -8,6 +8,30 @@ export const KEYBOARD = [
     interact: 'Enter',
   },
 ];
+export const GAMEPAD_INTERACT = { button: 2, label: 'X' };
+
+export function interactionBindings(assignments) {
+  return inputMethods(assignments).map((method) =>
+    method.type === 'controller'
+      ? { kind: 'controller', label: GAMEPAD_INTERACT.label }
+      : { kind: 'keyboard', label: KEYBOARD[method.layout].interact.replace(/^Key/, '') },
+  );
+}
+export function inputMethods(assignments) {
+  const hasController = assignments.some((index) => index !== null);
+  return assignments.map((index, player) =>
+    index !== null
+      ? { type: 'controller', index }
+      : { type: 'keyboard', layout: hasController ? 1 : player },
+  );
+}
+
+export function inputMethodLabel(method) {
+  return method.type === 'controller'
+    ? `Controller ${method.index + 1}`
+    : `Keyboard · ${method.layout === 0 ? 'WASD' : 'Pijltjestoetsen'}`;
+}
+
 export class InputManager {
   constructor(target = window) {
     this.keys = new Set();
@@ -102,10 +126,11 @@ export class InputManager {
   }
   sample() {
     const pads = this.pads();
-    return KEYBOARD.map((mapping, index) => {
-      const pad = pads.find((p) => p.index === this.assignments[index]);
-      const held = (action) => this.keys.has(mapping[action]);
-      const pressed = (action) => this.pressed.has(mapping[action]);
+    return inputMethods(this.assignments).map((method, index) => {
+      const pad = method.type === 'controller' ? pads.find((p) => p.index === method.index) : null;
+      const mapping = method.type === 'keyboard' ? KEYBOARD[method.layout] : null;
+      const held = (action) => !!mapping && this.keys.has(mapping[action]);
+      const pressed = (action) => !!mapping && this.pressed.has(mapping[action]);
       const buttons = pad?.buttons.map((b) => b.pressed) ?? [];
       const previous = this.previousPads.get(index) ?? [];
       this.previousPads.set(index, buttons);
@@ -115,8 +140,10 @@ export class InputManager {
         move: Math.max(-1, Math.min(1, Number(held('right')) - Number(held('left')) + padMove)),
         jump: pressed('jump') || !!(buttons[0] && !previous[0]),
         crouch: held('crouch') || !!buttons[1] || !!buttons[13],
-        interact: pressed('interact') || !!(buttons[2] && !previous[2]),
-        interactHeld: held('interact') || !!buttons[2],
+        interact:
+          pressed('interact') ||
+          !!(buttons[GAMEPAD_INTERACT.button] && !previous[GAMEPAD_INTERACT.button]),
+        interactHeld: held('interact') || !!buttons[GAMEPAD_INTERACT.button],
       };
     });
   }

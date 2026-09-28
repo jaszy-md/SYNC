@@ -8,11 +8,14 @@ export class Key {
     this.state = 'VISIBLE';
   }
   collect(player) {
-    if (this.state === 'VISIBLE' && player.abilities.collectKey && near(player, this, 20)) {
+    if (this.canCollect(player)) {
       this.state = 'COLLECTED';
       return true;
     }
     return false;
+  }
+  canCollect(player) {
+    return this.state === 'VISIBLE' && player.abilities.collectKey && near(player, this, 20);
   }
   draw(ctx) {
     if (this.state !== 'VISIBLE') return;

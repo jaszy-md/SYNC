@@ -5,11 +5,14 @@ export class Hint {
     Object.assign(this, { x, y, w: 40, h: 44, symbol, state: 'UNREAD' });
   }
   read(player) {
-    if (player.abilities.readHint && near(player, this, 18)) {
+    if (this.canRead(player)) {
       this.state = 'READ';
       return true;
     }
     return false;
+  }
+  canRead(player) {
+    return player.abilities.readHint && near(player, this, 18);
   }
   draw(ctx, visible) {
     ctx.fillStyle = visible ? '#64e4ff' : '#ab8bff';

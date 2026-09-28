@@ -1,6 +1,7 @@
 import { button } from '../components/button.js';
 import { heading } from '../components/heading.js';
 import { back } from '../components/backButton.js';
+import { inputMethods, inputMethodLabel } from '../../core/input.js';
 
 const escapeText = (value) =>
   String(value).replace(
@@ -50,6 +51,7 @@ export function controllersView() {
 }
 
 export function deviceCardsView(selected, assignments, pads) {
+  const methods = inputMethods(assignments);
   return (
     '<div id="connected-pads" class="connected-pads">' +
     connectedPadsView(assignments, pads) +
@@ -59,7 +61,10 @@ export function deviceCardsView(selected, assignments, pads) {
       .map((_, i) => {
         const assigned = assignments[i];
         const options = [
-          { index: null, name: 'Keyboard' },
+          {
+            index: null,
+            name: assigned === null ? inputMethodLabel(methods[i]) : 'Controller vrijgeven',
+          },
           ...pads
             .filter((pad) => pad.index !== assignments[1 - i])
             .map((pad) => ({ index: pad.index, name: controllerName(pad) })),
@@ -78,9 +83,7 @@ export function deviceCardsView(selected, assignments, pads) {
             )
             .join('') +
           '</div>' +
-          ('<p class="device-status">' +
-            (assigned === null ? 'Keyboard actief' : 'Controller geselecteerd') +
-            '</p>') +
+          ('<p class="device-status">' + inputMethodLabel(methods[i]) + ' actief' + '</p>') +
           '</div>'
         );
       })

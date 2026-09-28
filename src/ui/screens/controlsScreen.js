@@ -30,15 +30,19 @@ export function controlsView(rows, controlsTab) {
               ' · ' +
               (i === 0 ? 'Explorer' : 'Tech') +
               '</h3>' +
-              keys
-                .map(
-                  (key, j) =>
-                    '<div class="control-row">' +
-                    ('<span>' + ['Bewegen', 'Springen', 'Bukken', 'Interactie'][j] + '</span>') +
-                    ('<kbd>' + key + '</kbd>') +
-                    '</div>',
-                )
-                .join('') +
+              (keys
+                ? keys
+                    .map(
+                      (key, j) =>
+                        '<div class="control-row">' +
+                        ('<span>' +
+                          ['Bewegen', 'Springen', 'Bukken', 'Interactie'][j] +
+                          '</span>') +
+                        ('<kbd>' + key + '</kbd>') +
+                        '</div>',
+                    )
+                    .join('')
+                : '<p class="device-status">Controller actief · Geen keyboardbesturing</p>') +
               '</div>'),
         )
         .join('') +
@@ -46,7 +50,7 @@ export function controlsView(rows, controlsTab) {
     ('<div class="connected-controller flow-info"><strong>Bediening & pauze</strong><span>' +
       (controlsTab === 'keyboard'
         ? 'Pauze via de Menu-knop of Esc. Bij de uitgang: samen E + Enter vasthouden.'
-        : 'Gamepad: A = springen, B = bukken, X = interactie, Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug. Koppel elke controller via Controllers; keyboard blijft beschikbaar.') +
+        : 'Gamepad: A = springen, B = bukken, X = interactie, Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug. Iedere speler gebruikt één invoerapparaat.') +
       '</span></div>') +
     ('<div class="actions">' + back() + button('save-controls', 'Opslaan', 'primary') + '</div>') +
     '</div>'

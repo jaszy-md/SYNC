@@ -15,7 +15,7 @@ function releaseCell(s) {
   place(s.players[0], 340, 404);
   s.interact(s.players[0]);
   for (const symbol of s.symbolPuzzle.code) {
-    place(s.players[1], s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+    place(s.players[1], s.symbolPuzzle.symbolBlocks.find((o) => o.symbol === symbol).x + 8);
     s.interact(s.players[1]);
   }
   place(s.players[0], 70);
@@ -268,7 +268,7 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   jump(340);
   s.interact(a);
   for (const symbol of s.symbolPuzzle.code) {
-    walk(1, s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+    walk(1, s.symbolPuzzle.symbolBlocks.find((o) => o.symbol === symbol).x + 8);
     useTech();
   }
   assert.equal(s.cell.state, 'LOOSE');
@@ -331,14 +331,14 @@ test('symbol cage requires both roles, a present reader and the correct sequence
   s.interact(b);
   assert.equal(s.cell.state, 'CAGED');
   const choose = (symbol) => {
-    place(b, s.symbolPuzzle.symbolSwitches.find((o) => o.symbol === symbol).x + 8);
+    place(b, s.symbolPuzzle.symbolBlocks.find((o) => o.symbol === symbol).x + 8);
     s.interact(b);
   };
   choose(s.symbolPuzzle.code[0]);
   assert.equal(s.symbolPuzzle.matchIndex, 0);
   place(b, 340, 404);
   s.interact(b);
-  assert.equal(s.symbolPuzzle.symbolHint.state, 'UNREAD');
+  assert.equal(s.symbolPuzzle.clue.state, 'UNREAD');
   place(a, 340, 404);
   s.interact(a);
   place(a, 70);

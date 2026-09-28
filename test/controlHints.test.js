@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Stage1 } from '../src/stages/stage01/stage01.js';
 import { CHARACTERS } from '../src/entities/player/characters.js';
-import { interactionBindings, GAMEPAD_INTERACT, KEYBOARD } from '../src/core/input.js';
+import {
+  InputManager,
+  interactionBindings,
+  GAMEPAD_INTERACT,
+  KEYBOARD,
+} from '../src/core/input.js';
 import {
   getStage01ControlHints,
   drawStage01ControlHints,
@@ -11,11 +16,68 @@ import {
 const make = () => new Stage1([CHARACTERS[0], CHARACTERS[1]], () => 0);
 const place = (player, x, y = 554) => Object.assign(player, { x, y, grounded: true });
 const hints = (stage, assignments = [null, null]) => {
-  const before = JSON.stringify(stage);
+  const before = JSON.stringify(stage, (key, value) => (key === 'stage' ? undefined : value));
   const result = getStage01ControlHints(stage, interactionBindings(assignments));
-  assert.equal(JSON.stringify(stage), before, 'query never mutates gameplay');
+  assert.equal(
+    JSON.stringify(stage, (key, value) => (key === 'stage' ? undefined : value)),
+    before,
+    'query never mutates gameplay',
+  );
   return result;
 };
+
+test('assigned controller keeps driving Stage1 across update and render frames after puzzle extraction', (t) => {
+  const pad = {
+    index: 3,
+    id: 'Controller',
+    connected: true,
+    axes: [0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false })),
+  };
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { getGamepads: () => [null, null, null, pad] },
+  });
+  t.after(() => {
+    if (navigatorDescriptor) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+    else delete globalThis.navigator;
+  });
+  const input = new InputManager(new EventTarget());
+  const stage = make();
+  const ctx = new Proxy(
+    { canvas: { width: 1200 }, measureText: (text) => ({ width: text.length * 7 }) },
+    {
+      get: (target, name) => (name in target ? target[name] : () => {}),
+    },
+  );
+  const frame = () => {
+    stage.update(1 / 120, input.sample());
+    stage.draw(ctx, false, interactionBindings(input.assignments));
+    input.endFrame();
+  };
+  for (let i = 0; i < 30; i++) frame();
+  assert.deepEqual(input.assignments, [3, null]);
+  const x = stage.players[0].x;
+  pad.axes[0] = 1;
+  for (let i = 0; i < 12; i++) frame();
+  assert.ok(stage.players[0].x > x);
+  pad.axes[0] = 0;
+  pad.buttons[0].pressed = true;
+  frame();
+  assert.ok(stage.players[0].vy < 0);
+  pad.buttons[0].pressed = false;
+  pad.buttons[1].pressed = true;
+  frame();
+  assert.equal(stage.players[0].h, 26);
+  pad.buttons[1].pressed = false;
+  Object.assign(stage.players[0], { x: 340, y: 404, h: 46, vy: 0, grounded: true });
+  pad.buttons[2].pressed = true;
+  frame();
+  assert.equal(stage.symbolPuzzle.clue.state, 'READ');
+  place(stage.players[1], stage.socketA.x);
+  assert.equal(hints(stage).length, 0, 'HANDLED is a status, not a renderable target');
+});
 
 test('hints use the active mapping, including Arrow Keys when the other player has a controller', () => {
   assert.deepEqual(interactionBindings([null, null]), [
@@ -39,18 +101,18 @@ test('symbol reader/switch hints respect roles, reader presence, existing priori
     hints(stage).map((hint) => hint.player.id),
     [0],
   );
-  assert.equal(hints(stage)[0].object, stage.symbolPuzzle.symbolHint);
+  assert.equal(hints(stage)[0].object, stage.symbolPuzzle.clue);
   stage.interact(reader);
   assert.equal(hints(stage).length, 0, 'reading is complete');
   place(tech, 253);
-  assert.equal(hints(stage)[0].object, stage.symbolPuzzle.symbolSwitches[0]);
+  assert.equal(hints(stage)[0].object, stage.symbolPuzzle.symbolBlocks[0]);
   place(reader, 70);
   assert.equal(hints(stage).length, 0, 'switch is unavailable without reader');
   place(reader, 253);
   assert.equal(hints(stage).length, 0, 'wrong role cannot operate switches');
   place(reader, 340, 404);
   for (const symbol of stage.symbolPuzzle.code) {
-    const target = stage.symbolPuzzle.symbolSwitches.find((item) => item.symbol === symbol);
+    const target = stage.symbolPuzzle.symbolBlocks.find((item) => item.symbol === symbol);
     place(tech, target.x + 8);
     assert.equal(hints(stage)[0].object, target);
     stage.interact(tech);
@@ -122,7 +184,7 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   assert.equal(hints(stage).length, 0, 'both charge contacts must be available');
   place(tech, 1100);
   stage.chargePads[1].update([tech]);
-  stage.updateCharging(2.6, [{ interactHeld: true }, { interactHeld: true }]);
+  stage.energyPuzzle.updateCharging(2.6, [{ interactHeld: true }, { interactHeld: true }]);
   assert.equal(stage.phase, 'KEY');
   assert.equal(hints(stage).length, 0);
 });
@@ -177,8 +239,8 @@ test('all phase queries preserve gameplay state even for denied interactions', (
       stage.winch,
       stage.key,
       stage.door,
-      stage.symbolPuzzle.symbolHint,
-      ...stage.symbolPuzzle.symbolSwitches,
+      stage.symbolPuzzle.clue,
+      ...stage.symbolPuzzle.symbolBlocks,
     ]) {
       stage.players.forEach((player) => place(player, object.x, object.y));
       hints(stage);
@@ -206,9 +268,12 @@ test('rendering draws only mapped labels, circle/keycap shapes and bounded fade/
     },
   );
   const draw = () => {
-    const before = JSON.stringify(stage);
+    const before = JSON.stringify(stage, (key, value) => (key === 'stage' ? undefined : value));
     drawStage01ControlHints(ctx, stage, interactionBindings([0, null]));
-    assert.equal(JSON.stringify(stage), before);
+    assert.equal(
+      JSON.stringify(stage, (key, value) => (key === 'stage' ? undefined : value)),
+      before,
+    );
   };
   draw();
   assert.equal(calls.filter(([name]) => name === 'fillText').length, 0, 'starts transparent');

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "clean": "node -e \"for (const path of ['dist', 'node_modules/.vite']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
+    "reinstall": "npm ci",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test",

@@ -2,8 +2,9 @@ import { near } from '../../../../core/physics/collision.js';
 import { energyPuzzleConfig } from './energyPuzzleConfig.js';
 
 export class EnergyPuzzle {
-  constructor(stage) {
+  constructor(stage, restart = null) {
     this.stage = stage;
+    this.restart = restart;
   }
 
   updateCarriedCell() {
@@ -22,7 +23,11 @@ export class EnergyPuzzle {
   canCharge() {
     const { stage } = this;
 
-    return stage.phase === 'CHARGE' && stage.chargePads.every((pad) => pad.active);
+    return (
+      stage.phase === 'CHARGE' &&
+      (!this.restart || this.restart.state === 'READY') &&
+      stage.chargePads.every((pad) => pad.active)
+    );
   }
 
   updateCharging(dt, inputs) {
@@ -34,6 +39,7 @@ export class EnergyPuzzle {
     });
 
     if (stage.phase !== 'CHARGE') return;
+    this.restart?.update(dt, inputs, stage.chargePads, true);
 
     const bothPlayersCharging = this.canCharge() && inputs.every((input) => input.interactHeld);
 

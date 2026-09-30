@@ -46,7 +46,11 @@ test('assigned controller keeps driving Stage1 across update and render frames a
   const input = new InputManager(new EventTarget());
   const stage = make();
   const ctx = new Proxy(
-    { canvas: { width: 1200 }, measureText: (text) => ({ width: text.length * 7 }) },
+    {
+      createLinearGradient: () => ({ addColorStop() {} }),
+      canvas: { width: 1200 },
+      measureText: (text) => ({ width: text.length * 7 }),
+    },
     {
       get: (target, name) => (name in target ? target[name] : () => {}),
     },
@@ -156,6 +160,7 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   place(tech, 740, 259);
   assert.equal(hints(stage).length, 0);
   stage.phase = 'TRANSFER';
+  stage.wiringPuzzle.complete = true;
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
@@ -181,9 +186,10 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   );
   place(tech, 900);
   stage.chargePads[1].update([tech]);
-  assert.equal(hints(stage).length, 0, 'both charge contacts must be available');
+  assert.equal(hints(stage).length, 1, 'occupied start station remains available for restart');
   place(tech, 1100);
   stage.chargePads[1].update([tech]);
+  stage.restartPuzzle.state = 'READY';
   stage.energyPuzzle.updateCharging(2.6, [{ interactHeld: true }, { interactHeld: true }]);
   assert.equal(stage.phase, 'KEY');
   assert.equal(hints(stage).length, 0);
@@ -251,6 +257,7 @@ test('all phase queries preserve gameplay state even for denied interactions', (
 test('rendering draws only mapped labels, circle/keycap shapes and bounded fade/pulse without changing the stage', () => {
   const stage = make();
   stage.phase = 'TRANSFER';
+  stage.wiringPuzzle.complete = true;
   stage.cell.state = 'SOCKET_A';
   place(stage.players[0], 740, 259);
   place(stage.players[1], 560);

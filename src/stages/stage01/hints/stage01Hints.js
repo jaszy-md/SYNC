@@ -1,4 +1,11 @@
 export function getStage01Hint(stage) {
+  if (stage.phase === 'TRANSFER' && !stage.wiringPuzzle.complete)
+    return {
+      id: 'wiring',
+      x: 660,
+      y: 267,
+      text: 'Explorer: gebruik de gevoede brug naar de diagnosemonitor linksboven. Lees per kabel A/B/C het aansluitnummer voor. Tech: kruip onder het onderhoudskanaal naar JUNCTION en wissel met interactie de aansluiting 1–4. Explorer bevestigt met interactie bij de monitor. Daarna werkt de lier.',
+    };
   if (stage.phase === 'SYMBOLS')
     return {
       id: 'symbols',
@@ -32,7 +39,7 @@ export function getStage01Hint(stage) {
       id: 'charge',
       x: 1017,
       y: 559,
-      text: 'Ga op jullie eigen gemarkeerde vloercontact staan: P1 links, P2 rechts. Houd allebei interactie vast tot de ring gevuld is. Daarmee verschijnen het sleutelplatform en de sleutel, niet een open deur.',
+      text: 'Generatorstart: P1 op het linker contact, P2 rechts. P1 drukt interactie, wacht op groen en drukt nogmaals. P2 bevestigt met interactie. Houd daarna beiden vast tot het systeem online is. Explorer haalt de toegangssleutel op het platform.',
     };
   if (stage.phase === 'KEY')
     return {

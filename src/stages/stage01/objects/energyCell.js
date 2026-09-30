@@ -15,7 +15,7 @@ export class EnergyCell {
     }
 
     if (this.state === 'CAGED') {
-      ctx.strokeStyle = '#f379d0';
+      ctx.strokeStyle = '#927c59';
       ctx.lineWidth = 3;
       ctx.strokeRect(this.x - 15, this.y - 19, 54, 46);
 
@@ -30,8 +30,13 @@ export class EnergyCell {
 
   drawAt(ctx, x, y) {
     // Tekent de batterij op basis van de ingestelde afmetingen
-    ctx.fillStyle = '#ffdc79';
+    ctx.fillStyle = '#b1a77c';
     ctx.fillRect(x, y, this.w, this.h);
+
+    ctx.strokeStyle = '#5b695e';
+    ctx.strokeRect(x + 2, y + 2, this.w - 4, this.h - 4);
+    ctx.fillStyle = '#86d3a0';
+    ctx.fillRect(x + 3, y + 5, 3, this.h - 10);
 
     // Tekent het contactpunt boven op de batterij
     const terminalWidth = Math.max(6, Math.round(this.w / 3));

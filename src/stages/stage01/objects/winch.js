@@ -5,7 +5,7 @@ export class Winch {
   draw(ctx, time) {
     const x = this.x + this.w / 2,
       y = this.y + this.h / 2 - 1;
-    ctx.strokeStyle = this.active ? '#64e4ff' : '#ab8bff';
+    ctx.strokeStyle = this.active ? '#87d4a2' : '#c1b484';
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(x, y, 17, 0, Math.PI * 2);

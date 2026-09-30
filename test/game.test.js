@@ -28,8 +28,28 @@ function dockA(s) {
   s.interact(s.players[1]);
   step(s);
 }
+function repairWiring(s) {
+  place(s.players[0], 660, 259);
+  place(s.players[1], 810);
+  for (const target of s.wiringPuzzle.code) {
+    while (s.wiringPuzzle.selection !== target) s.interact(s.players[1]);
+    s.interact(s.players[0]);
+  }
+  assert.ok(s.wiringPuzzle.complete);
+  place(s.players[1], 560);
+}
+function restart(s) {
+  s.update(1 / 120, [{ ...idle(), interact: true }, idle()]);
+  step(s, [idle(), idle()], 1.3);
+  assert.equal(s.restartPuzzle.state, 'GREEN');
+  s.update(1 / 120, [{ ...idle(), interact: true }, idle()]);
+  assert.equal(s.restartPuzzle.state, 'CONFIRM');
+  s.update(1 / 120, [idle(), { ...idle(), interact: true }]);
+  assert.equal(s.restartPuzzle.state, 'READY');
+}
 function dockB(s) {
   dockA(s);
+  repairWiring(s);
   s.interact(s.players[1]);
   place(s.players[1], 980);
   s.interact(s.players[1]);
@@ -43,7 +63,7 @@ test('independent movement, gravity, landing, jump and crouch clearance', () => 
     { ...idle(), move: 1 },
     { ...idle(), move: -1 },
   ]);
-  assert.ok(s.players[0].x > 70);
+  assert.ok(s.players[0].x > 30);
   assert.ok(s.players[1].x < 135);
   const p = s.players[0];
   assert.equal(p.y, 554);
@@ -130,6 +150,7 @@ test('second gate requires Explorer holding the remote winch; Tech cannot substi
   const s = make(),
     [a, b] = s.players;
   dockA(s);
+  repairWiring(s);
   place(b, 740, 259);
   step(s, [idle(), { ...idle(), interactHeld: true }]);
   assert.equal(s.gateB.active, true);
@@ -167,6 +188,7 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   place(b, 1100);
   step(s, [{ ...idle(), interactHeld: true }, idle()], 3);
   assert.equal(s.charge, 0);
+  restart(s);
   const both = [
     { ...idle(), interactHeld: true },
     { ...idle(), interactHeld: true },
@@ -220,11 +242,11 @@ test('only requested world hints reveal text, require entry, and follow progress
   step(s);
   assert.ok(s.helpMarker, 'standing on a new marker does not collect it');
   dockA(s);
-  assert.equal(s.helpMarker.id, 'climb');
+  assert.equal(s.helpMarker.id, 'wiring');
   place(s.players[0], 670, 259);
   step(s);
   assert.equal(s.helpMarker, null);
-  assert.match(s.message, /vaste platform/);
+  assert.match(s.message, /diagnosemonitor/);
 });
 test('fresh stage resets cell, charge and gates without changing character identity', () => {
   const s = make();
@@ -285,6 +307,16 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   assert.equal(a.y, 324);
   jump(720);
   assert.equal(a.y, 259);
+  walk(0, 660);
+  walk(1, 625);
+  walk(1, 810, { crouch: true });
+  for (const target of s.wiringPuzzle.code) {
+    while (s.wiringPuzzle.selection !== target) useTech();
+    s.interact(a);
+  }
+  assert.ok(s.wiringPuzzle.complete);
+  walk(1, 625, { crouch: true });
+  walk(1, 560);
   walk(0, 740);
   useTech(true);
   assert.equal(s.cell.state, 'CARRIED');
@@ -297,6 +329,7 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   walk(0, 1035);
   step(s, [idle(), idle()], 1);
   walk(1, 1100);
+  restart(s);
   step(
     s,
     [

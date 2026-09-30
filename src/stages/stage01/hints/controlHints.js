@@ -11,7 +11,8 @@ export function getStage01ControlHints(stage, bindings) {
     if (target && typeof target === 'object') targets.push(target);
     // Once the cell is delivered the gate stays open without operating the winch.
     if (stage.phase === 'TRANSFER' && stage.canOperateWinch(player)) targets.push(stage.winch);
-    if (stage.energyPuzzle.canCharge()) targets.push(stage.chargePads[player.id]);
+    if (stage.phase === 'CHARGE' && stage.chargePads[player.id].active)
+      targets.push(stage.chargePads[player.id]);
     if (stage.canExit() && stage.door.canOpen(stage.players)) targets.push(stage.door);
     return [...new Set(targets)].map((object) => ({ player, object, binding }));
   });

@@ -1,28 +1,20 @@
-import { stage01Config } from './stage01Config.js';
+import {
+  drawFacilityBackground,
+  drawFacilityStructure,
+  drawRepairSystems,
+  machine,
+} from './facilityView.js';
 import { drawStage01ControlHints } from './hints/controlHints.js';
 import { drawEnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzleView.js';
-
-function drawBackground(ctx) {
-  ctx.clearRect(0, 0, stage01Config.width, stage01Config.height);
-  ctx.fillStyle = '#10162c';
-  ctx.fillRect(0, 0, stage01Config.width, stage01Config.height);
-
-  ctx.fillStyle = '#292841';
-  for (let x = 20; x < stage01Config.width; x += 40) {
-    for (let y = 80; y < 600; y += 40) {
-      ctx.fillRect(x, y, 2, 2);
-    }
-  }
-}
 
 function drawConnections(ctx, stage) {
   const powered = stage.cell.state === 'SOCKET_A';
 
   ctx.lineWidth = 3;
-  ctx.setLineDash([6, 8]);
+  ctx.setLineDash([]);
 
   const wire = (points, active) => {
-    ctx.strokeStyle = active ? '#64e4ff' : '#493e62';
+    ctx.strokeStyle = active ? '#87d4a2' : '#575649';
     ctx.beginPath();
 
     points.forEach(([x, y], index) => {
@@ -77,14 +69,30 @@ function drawConnections(ctx, stage) {
 }
 
 function drawWorldObjects(ctx, stage) {
-  stage.platforms.forEach((platform) => platform.draw(ctx, 'base'));
+  drawFacilityStructure(ctx, stage);
   stage.symbolPuzzle.draw(ctx, stage.players);
   stage.key.draw(ctx);
 }
 
 function drawPlayersAndItems(ctx, stage) {
-  stage.door.draw(ctx);
+  machine(
+    ctx,
+    stage.door,
+    'EXIT / AUTHORIZATION',
+    stage.door.state === 'LOCKED' ? 'OFF' : 'ONLINE',
+  );
+  ctx.fillStyle = '#68786a';
+  ctx.fillRect(stage.door.x + 25, stage.door.y + 9, 2, 70);
   stage.players.forEach((player) => player.draw(ctx));
+  stage.players
+    .filter((player) => player.facilityStun > 0)
+    .forEach((player) => {
+      ctx.strokeStyle = '#e0b567';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(player.x + 14, player.y - 7, 17, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    });
   stage.cell.draw(ctx);
 
   if (stage.keyCarrier !== null && stage.door.state === 'LOCKED') {
@@ -111,18 +119,15 @@ function drawAffordances(ctx, stage) {
 }
 
 export function drawStage1(ctx, stage, debug = false, bindings = []) {
-  drawBackground(ctx);
+  drawFacilityBackground(ctx, stage.time);
   drawConnections(ctx, stage);
   drawWorldObjects(ctx, stage);
-
-  stage.gateA.draw(ctx, 'details');
-  stage.gateB.draw(ctx, 'details');
-  stage.plate.draw(ctx);
-  stage.winch.draw(ctx, stage.time);
 
   // Tekent de gezamenlijke onderdelen van de energypuzzel
   drawEnergyPuzzle(ctx, stage);
 
+  drawRepairSystems(ctx, stage);
+  stage.guardian.draw(ctx);
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
 

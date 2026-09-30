@@ -8,6 +8,9 @@ import { initializeStage01ObjectSetup } from './stage01ObjectSetup.js';
 import { SymbolPuzzle } from './puzzles/symbolPuzzle/symbolPuzzle.js';
 import { EnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzle.js';
 import { getStage01Hint } from './hints/stage01Hints.js';
+import { WiringPuzzle } from './puzzles/wiringPuzzle.js';
+import { RestartPuzzle } from './puzzles/restartPuzzle.js';
+import { SecurityDrone } from './objects/securityDrone.js';
 
 // Energy relay: the same physical cell must be moved between two sockets.
 // Opening a passage requires a partner to remain at a remote control.
@@ -29,7 +32,10 @@ export class Stage1 {
     initializeStage01ObjectSetup(this);
 
     this.symbolPuzzle = new SymbolPuzzle(random);
-    this.energyPuzzle = new EnergyPuzzle(this);
+    this.wiringPuzzle = new WiringPuzzle(random);
+    this.restartPuzzle = new RestartPuzzle();
+    this.energyPuzzle = new EnergyPuzzle(this, this.restartPuzzle);
+    this.guardian = new SecurityDrone();
 
     this.keyCarrier = null;
     this.phase = 'SYMBOLS';
@@ -47,19 +53,31 @@ export class Stage1 {
 
   update(dt, inputs) {
     this.time += dt;
-
-    this.players.forEach((player, index) => {
-      player.update(inputs[index], dt, this.solids, stage01Config.width);
+    const effectiveInputs = inputs.map((input, index) => {
+      const player = this.players[index];
+      player.facilityStun = Math.max(0, (player.facilityStun || 0) - dt);
+      return player.facilityStun > 0
+        ? { ...input, move: 0, jump: false, interact: false, interactHeld: false }
+        : input;
     });
 
     this.players.forEach((player, index) => {
-      if (inputs[index].interact) this.interact(player);
+      player.update(effectiveInputs[index], dt, this.solids, stage01Config.width);
     });
 
-    this.updateRoutes(inputs);
+    this.players.forEach((player, index) => {
+      if (effectiveInputs[index].interact) this.interact(player);
+    });
+
+    this.updateRoutes(effectiveInputs);
     this.energyPuzzle.updateCarriedCell();
-    this.energyPuzzle.updateCharging(dt, inputs);
-    this.updateExit(inputs);
+    this.energyPuzzle.updateCharging(dt, effectiveInputs);
+    this.guardian.update(
+      dt,
+      this.players,
+      this.wiringPuzzle.complete && !['KEY', 'EXIT'].includes(this.phase),
+    );
+    this.updateExit(effectiveInputs);
     this.updateRequestedHint();
   }
 
@@ -83,6 +101,7 @@ export class Stage1 {
   canOperateWinch(player) {
     return (
       ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase) &&
+      this.wiringPuzzle.complete &&
       player.abilities.operateWinch &&
       near(player, this.winch, 12)
     );
@@ -124,6 +143,11 @@ export class Stage1 {
 
   // Preview gebruikt dezelfde voorwaarden zonder de game state te wijzigen
   interact(player, preview = false) {
+    if (player.facilityStun > 0) return null;
+    if (this.phase === 'TRANSFER') {
+      const result = this.wiringPuzzle.interact(player, this.players, preview);
+      if (result) return result;
+    }
     if (this.phase === 'SYMBOLS') {
       const result = this.symbolPuzzle.interact(player, this.players, preview);
 
@@ -165,7 +189,9 @@ export class Stage1 {
     }
 
     // De energypuzzel handelt batterij- en socketinteracties af
-    return this.energyPuzzle.interact(player, preview);
+    const energy = this.energyPuzzle.interact(player, preview);
+    if (energy) return energy;
+    return this.guardian.interact(player, preview);
   }
 
   requestHint() {

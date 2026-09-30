@@ -1,41 +1,8 @@
+import { stage01LayoutConfig } from '../../stage01LayoutConfig.js';
+
 export const energyPuzzleConfig = {
-  cell: {
-    x: 185,
-    y: 572,
-    width: 24,
-    height: 26,
-  },
-
-  energySockets: {
-    a: {
-      x: 550,
-      y: 561,
-      width: 44,
-      height: 39,
-      label: 'I',
-    },
-
-    b: {
-      x: 970,
-      y: 561,
-      width: 44,
-      height: 39,
-      label: 'II',
-    },
-  },
-
-  chargePads: [
-    {
-      x: 1025,
-      y: 592,
-      width: 45,
-    },
-    {
-      x: 1090,
-      y: 592,
-      width: 45,
-    },
-  ],
-
+  cell: stage01LayoutConfig.objects.cell,
+  energySockets: stage01LayoutConfig.objects.sockets,
+  chargePads: stage01LayoutConfig.objects.chargePads,
   chargeDuration: 2.5,
 };

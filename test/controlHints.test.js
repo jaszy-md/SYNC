@@ -75,7 +75,7 @@ test('assigned controller keeps driving Stage1 across update and render frames a
   frame();
   assert.equal(stage.players[0].h, 26);
   pad.buttons[1].pressed = false;
-  Object.assign(stage.players[0], { x: 340, y: 404, h: 46, vy: 0, grounded: true });
+  Object.assign(stage.players[0], { x: 340, y: 392, h: 46, vy: 0, grounded: true });
   pad.buttons[2].pressed = true;
   frame();
   assert.equal(stage.symbolPuzzle.clue.state, 'READ');
@@ -99,8 +99,8 @@ test('symbol reader/switch hints respect roles, reader presence, existing priori
   const stage = make(),
     [reader, tech] = stage.players;
   assert.equal(hints(stage).length, 0);
-  place(reader, 340, 404);
-  place(tech, 340, 404);
+  place(reader, 340, 392);
+  place(tech, 340, 392);
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
@@ -114,7 +114,7 @@ test('symbol reader/switch hints respect roles, reader presence, existing priori
   assert.equal(hints(stage).length, 0, 'switch is unavailable without reader');
   place(reader, 253);
   assert.equal(hints(stage).length, 0, 'wrong role cannot operate switches');
-  place(reader, 340, 404);
+  place(reader, 340, 392);
   for (const symbol of stage.symbolPuzzle.code) {
     const target = stage.symbolPuzzle.symbolBlocks.find((item) => item.symbol === symbol);
     place(tech, target.x + 8);
@@ -156,17 +156,16 @@ test('cell and sockets show only usable actions for the carrier role', () => {
 test('winch and two charging contacts reuse stage eligibility and keep player inputs independent', () => {
   const stage = make(),
     [reader, tech] = stage.players;
-  place(reader, 740, 259);
-  place(tech, 740, 259);
+  place(reader, 740, 247);
+  place(tech, 740, 247);
   assert.equal(hints(stage).length, 0);
   stage.phase = 'TRANSFER';
-  stage.coolingRepair.complete = true;
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
   );
   assert.equal(hints(stage)[0].object, stage.winch);
-  place(reader, 700, 259);
+  place(reader, 700, 247);
   assert.equal(hints(stage).length, 0, 'outside the exact winch range');
   stage.phase = 'CHARGE';
   place(reader, 1035);
@@ -186,12 +185,11 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   );
   place(tech, 900);
   stage.chargePads[1].update([tech]);
-  assert.equal(hints(stage).length, 1, 'occupied start station remains available for restart');
+  assert.equal(hints(stage).length, 1, 'occupied start station remains available for charging');
   place(tech, 1100);
   stage.chargePads[1].update([tech]);
-  stage.restartPuzzle.state = 'READY';
   stage.energyPuzzle.updateCharging(2.6, [{ interactHeld: true }, { interactHeld: true }]);
-  assert.equal(stage.phase, 'ARCHIVE');
+  assert.equal(stage.phase, 'KEY');
   assert.equal(hints(stage).length, 0);
 });
 
@@ -199,15 +197,15 @@ test('key, unlock and exit hints follow exact ranges, ownership and completed st
   const stage = make(),
     [reader, tech] = stage.players;
   stage.phase = 'KEY';
-  place(reader, 202, 274);
-  place(tech, 202, 274);
+  place(reader, 202, 262);
+  place(tech, 202, 262);
   assert.equal(hints(stage).length, 0, 'hidden key is unavailable');
   stage.key.reveal();
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
   );
-  place(reader, stage.key.x + stage.key.w + 20, 274);
+  place(reader, stage.key.x + stage.key.w + 20, 262);
   assert.equal(hints(stage).length, 0, 'exact range edge is excluded');
   reader.x -= 0.1;
   assert.equal(hints(stage)[0].object, stage.key);
@@ -257,9 +255,8 @@ test('all phase queries preserve gameplay state even for denied interactions', (
 test('rendering draws only mapped labels, circle/keycap shapes and bounded fade/pulse without changing the stage', () => {
   const stage = make();
   stage.phase = 'TRANSFER';
-  stage.coolingRepair.complete = true;
   stage.cell.state = 'SOCKET_A';
-  place(stage.players[0], 740, 259);
+  place(stage.players[0], 740, 247);
   place(stage.players[1], 560);
   const calls = [];
   const ctx = new Proxy(

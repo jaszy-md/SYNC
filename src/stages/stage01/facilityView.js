@@ -189,17 +189,6 @@ export function machine(ctx, rect, label, status = 'OFF') {
 }
 
 export function drawFacilityStructure(ctx, stage) {
-  machine(
-    ctx,
-    { x: 1017, y: 450, w: 110, h: 106 },
-    'AUX GENERATOR',
-    ['ARCHIVE', 'KEY', 'EXIT'].includes(stage.phase)
-      ? 'ONLINE'
-      : stage.phase === 'CHARGE'
-        ? 'PARTIAL'
-        : 'OFF',
-  );
-
   for (const p of stage.platforms) {
     if (!p.active || p === stage.gateA || p === stage.gateB) continue;
 
@@ -250,15 +239,15 @@ export function drawFacilityStructure(ctx, stage) {
 
   machine(
     ctx,
-    { x: 194, y: 265, w: 44, h: 55 },
+    { x: stage.key.x - 8, y: stage.keyPlatform.y - 55, w: 44, h: 55 },
     'AUTH',
-    stage.archiveRepair.complete ? 'ONLINE' : 'OFF',
+    ['KEY', 'EXIT'].includes(stage.phase) ? 'ONLINE' : 'OFF',
   );
 
-  if (!stage.archiveRepair.complete) {
+  if (!['KEY', 'EXIT'].includes(stage.phase)) {
     ctx.fillStyle = '#e0b567';
     ctx.font = 'bold 22px monospace';
-    ctx.fillText('×', 207, 300);
+    ctx.fillText('×', stage.key.x + 5, stage.keyPlatform.y - 20);
   }
 
   ctx.font = '11px monospace';
@@ -296,33 +285,5 @@ export function drawFacilityStructure(ctx, stage) {
     ctx.fillRect(pad.x + 4, pad.y, pad.w - 8, 3);
   }
 
-  machine(ctx, stage.winch, 'MANUAL RELEASE', stage.winch.active ? 'ONLINE' : 'PARTIAL');
-
   stage.winch.draw(ctx, stage.time);
-}
-
-export function drawRepairSystems(ctx, stage) {
-  if (stage.phase === 'CHARGE') {
-    ctx.fillStyle = '#d3c8a7';
-    ctx.font = '12px monospace';
-
-    ctx.fillText(stage.restartPuzzle.instruction, 970, 420);
-
-    ctx.fillStyle = ['GREEN', 'CONFIRM', 'READY'].includes(stage.restartPuzzle.state)
-      ? '#87d4a2'
-      : Math.sin(stage.time * 5) > 0
-        ? '#e0b567'
-        : '#785637';
-
-    ctx.beginPath();
-    ctx.arc(1109, 467, 5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  if (stage.guardian.active) {
-    ctx.fillStyle = '#d5b587';
-    ctx.font = '11px monospace';
-
-    ctx.fillText('SEC-04 • Tech: interact = 4s bypass', 670, 630);
-  }
 }

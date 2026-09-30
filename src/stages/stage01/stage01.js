@@ -8,8 +8,6 @@ import { initializeStage01ObjectSetup } from './stage01ObjectSetup.js';
 import { SymbolPuzzle } from './puzzles/symbolPuzzle/symbolPuzzle.js';
 import { EnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzle.js';
 import { getStage01Hint } from './hints/stage01Hints.js';
-import { RepairPanel } from './puzzles/repairPanel.js';
-import { RestartPuzzle } from './puzzles/restartPuzzle.js';
 import { SecurityDrone } from './objects/securityDrone.js';
 
 // Energy relay: the same physical cell must be moved between two sockets.
@@ -32,30 +30,12 @@ export class Stage1 {
     initializeStage01ObjectSetup(this);
 
     this.symbolPuzzle = new SymbolPuzzle(random);
-    this.coolingRepair = new RepairPanel(
-      {
-        title: 'KOELING RESET',
-        terminal: { x: 796, y: 550, w: 68, h: 50 },
-        monitor: { x: 642, y: 259, w: 88, h: 44 },
-        labels: ['VENT', 'POMP', 'FILTER', 'KOELER'],
-      },
-      random,
-    );
-    this.archiveRepair = new RepairPanel(
-      {
-        title: 'ARCHIEF HERSTEL',
-        terminal: { x: 90, y: 546, w: 86, h: 54 },
-        monitor: { x: 92, y: 272, w: 96, h: 48 },
-        labels: ['SCAN', 'CACHE', 'SEAL', 'AUTH'],
-      },
-      random,
-    );
-    this.restartPuzzle = new RestartPuzzle();
-    this.energyPuzzle = new EnergyPuzzle(this, this.restartPuzzle, () => {
-      this.phase = 'ARCHIVE';
-    });
+    this.energyPuzzle = new EnergyPuzzle(this);
     this.guardian = new SecurityDrone();
 
+    this.random = random;
+    this.health = this.players.map(() => ({ value: 4, max: 4, invulnerable: 0 }));
+    this.runTime = this.players.map(() => 0);
     this.keyCarrier = null;
     this.phase = 'SYMBOLS';
     this.charge = 0;
@@ -67,36 +47,27 @@ export class Stage1 {
   }
 
   get solids() {
-    return this.platforms.filter((platform) => platform.active);
-  }
-
-  get activeRepair() {
-    return this.phase === 'TRANSFER'
-      ? this.coolingRepair
-      : this.phase === 'ARCHIVE'
-        ? this.archiveRepair
-        : null;
+    const solids = this.platforms.filter((platform) => platform.active);
+    if (this.cell.state === 'CAGED') solids.push(this.cell.cage);
+    return solids;
   }
 
   update(dt, inputs) {
     this.time += dt;
-    const panelOwner = this.activeRepair?.owner;
-    this.coolingRepair.update(dt, inputs, this.players, this.phase === 'TRANSFER');
-    this.archiveRepair.update(dt, inputs, this.players, this.phase === 'ARCHIVE');
-    if (this.phase === 'ARCHIVE' && this.archiveRepair.complete) {
-      this.phase = 'KEY';
-      this.key.reveal();
-    }
     const effectiveInputs = inputs.map((input, index) => {
       const player = this.players[index];
       player.facilityStun = Math.max(0, (player.facilityStun || 0) - dt);
-      return player.facilityStun > 0 || index === panelOwner
+      return player.facilityStun > 0
         ? { ...input, move: 0, jump: false, interact: false, interactHeld: false }
         : input;
     });
 
     this.players.forEach((player, index) => {
+      this.health[index].invulnerable = Math.max(0, this.health[index].invulnerable - dt);
       player.update(effectiveInputs[index], dt, this.solids, stage01Config.width);
+      this.runTime[index] =
+        !player.crouched && Math.abs(player.vx) >= 220 ? this.runTime[index] + dt : 0;
+      player.stage01Rushing = this.runTime[index] >= 0.25;
     });
 
     this.players.forEach((player, index) => {
@@ -106,7 +77,17 @@ export class Stage1 {
     this.updateRoutes(effectiveInputs, dt);
     this.energyPuzzle.updateCarriedCell();
     this.energyPuzzle.updateCharging(dt, effectiveInputs);
-    this.guardian.update(dt, this.players, ['TRANSFER', 'CHARGE'].includes(this.phase));
+    this.guardian.update(
+      dt,
+      this.players,
+      ['TRANSFER', 'CHARGE'].includes(this.phase),
+      this.solids,
+      (player) => this.damagePlayer(player),
+    );
+    if (this.health.some((health) => health.value === 0)) {
+      this.reset();
+      return;
+    }
     this.updateExit(effectiveInputs);
     this.updateRequestedHint();
   }
@@ -116,8 +97,8 @@ export class Stage1 {
 
     this.plate.update([explorer]);
 
-    const transferred = ['TRANSFER', 'CHARGE', 'ARCHIVE', 'KEY', 'EXIT'].includes(this.phase);
-    const delivered = ['CHARGE', 'ARCHIVE', 'KEY', 'EXIT'].includes(this.phase);
+    const transferred = ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase);
+    const delivered = ['CHARGE', 'KEY', 'EXIT'].includes(this.phase);
 
     this.winch.active = this.canOperateWinch(explorer) && inputs[explorer.id].interactHeld;
 
@@ -125,10 +106,9 @@ export class Stage1 {
     this.setGate(this.gateB, delivered || this.winch.active);
 
     // De batterij in socket A activeert de brug
-    this.bridge.active =
-      this.cell.state === 'SOCKET_A' || ['ARCHIVE', 'KEY', 'EXIT'].includes(this.phase);
+    this.bridge.active = this.cell.state === 'SOCKET_A' || ['KEY', 'EXIT'].includes(this.phase);
     this.returnSteps.forEach((p) => {
-      p.active = ['ARCHIVE', 'KEY', 'EXIT'].includes(this.phase);
+      p.active = ['KEY', 'EXIT'].includes(this.phase);
     });
     for (const gate of [this.gateA, this.gateB])
       gate.slide = Math.max(0, Math.min(1, (gate.slide ?? 0) + (gate.active ? -1 : 1) * dt * 3));
@@ -136,8 +116,7 @@ export class Stage1 {
 
   canOperateWinch(player) {
     return (
-      ['TRANSFER', 'CHARGE', 'ARCHIVE', 'KEY', 'EXIT'].includes(this.phase) &&
-      this.coolingRepair.complete &&
+      ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase) &&
       player.abilities.operateWinch &&
       near(player, this.winch, 12)
     );
@@ -180,11 +159,6 @@ export class Stage1 {
   // Preview gebruikt dezelfde voorwaarden zonder de game state te wijzigen
   interact(player, preview = false) {
     if (player.facilityStun > 0) return null;
-    if (this.activeRepair) {
-      if (this.activeRepair.owner === player.id) return null;
-      const result = this.activeRepair.interact(player, preview);
-      if (result) return result;
-    }
     if (this.phase === 'SYMBOLS') {
       const result = this.symbolPuzzle.interact(player, this.players, preview);
 
@@ -229,6 +203,22 @@ export class Stage1 {
     const energy = this.energyPuzzle.interact(player, preview);
     if (energy) return energy;
     return this.guardian.interact(player, preview);
+  }
+
+  damagePlayer(player) {
+    const health = this.health[player.id];
+    if (health.invulnerable > 0) return;
+    health.value = Math.max(0, health.value - 1);
+    health.invulnerable = 1.2;
+  }
+
+  reset() {
+    const fresh = new Stage1(
+      this.players.map((player) => player.character),
+      this.random,
+    );
+    Object.assign(this, fresh);
+    this.energyPuzzle.stage = this;
   }
 
   requestHint() {

@@ -2,10 +2,8 @@ import { near } from '../../../../core/physics/collision.js';
 import { energyPuzzleConfig } from './energyPuzzleConfig.js';
 
 export class EnergyPuzzle {
-  constructor(stage, restart = null, onComplete = null) {
+  constructor(stage) {
     this.stage = stage;
-    this.restart = restart;
-    this.onComplete = onComplete;
   }
 
   updateCarriedCell() {
@@ -24,11 +22,7 @@ export class EnergyPuzzle {
   canCharge() {
     const { stage } = this;
 
-    return (
-      stage.phase === 'CHARGE' &&
-      (!this.restart || this.restart.state === 'READY') &&
-      stage.chargePads.every((pad) => pad.active)
-    );
+    return stage.phase === 'CHARGE' && stage.chargePads.every((pad) => pad.active);
   }
 
   updateCharging(dt, inputs) {
@@ -40,7 +34,6 @@ export class EnergyPuzzle {
     });
 
     if (stage.phase !== 'CHARGE') return;
-    this.restart?.update(dt, inputs, stage.chargePads, true);
 
     const bothPlayersCharging = this.canCharge() && inputs.every((input) => input.interactHeld);
 
@@ -51,10 +44,6 @@ export class EnergyPuzzle {
     if (stage.charge < energyPuzzleConfig.chargeDuration) return;
 
     // Rondt de energypuzzel af en maakt de sleutel beschikbaar
-    if (this.onComplete) {
-      this.onComplete();
-      return;
-    }
     stage.phase = 'KEY';
     stage.key.reveal();
     stage.keyPlatform.active = true;

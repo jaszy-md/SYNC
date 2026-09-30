@@ -1,8 +1,15 @@
+import { stage01Image, drawStage01Image } from '../stage01Assets.js';
+
 export class Winch {
   constructor(x, y) {
     Object.assign(this, { x, y, w: 40, h: 42, active: false });
   }
   draw(ctx, time) {
+    const image = stage01Image(this.active ? 'switch_on' : 'switch_off');
+    if (image) {
+      drawStage01Image(ctx, image, { x: this.x - 14, y: this.y - 28, w: 68, h: 76 });
+      return;
+    }
     const x = this.x + this.w / 2,
       y = this.y + this.h / 2 - 1;
     ctx.strokeStyle = this.active ? '#87d4a2' : '#c1b484';

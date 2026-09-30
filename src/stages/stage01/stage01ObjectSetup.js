@@ -7,25 +7,22 @@ import { Winch } from './objects/winch.js';
 import { EnergySocket } from './objects/energySocket.js';
 import { EnergyCell } from './objects/energyCell.js';
 import { Gate } from './objects/gate.js';
+import { stage01LayoutConfig as layout } from './stage01LayoutConfig.js';
 import { energyPuzzleConfig } from './puzzles/energyPuzzle/energyPuzzleConfig.js';
 
 export function initializeStage01ObjectSetup(stage) {
-  stage.platforms = [
-    new Platform(0, 600, 1200, 60, '#2a304c'),
-    new Platform(210, 450, 200, 20),
-    new Platform(645, 305, 175, 20),
-    new Platform(660, 535, 105, 30),
-  ];
-
-  stage.bridge = new Platform(465, 370, 140, 18, '#52548b');
+  const platform = ({ x, y, width, height }) => new Platform(x, y, width, height);
+  const gate = (rect, label) => new Gate(rect.x, rect.y, rect.width, rect.height, label);
+  stage.platforms = ['floor', 'access', 'maintenance', 'duct'].map((name) =>
+    platform(layout.platforms[name]),
+  );
+  stage.bridge = platform(layout.platforms.bridge);
   stage.bridge.active = false;
-
-  stage.gateA = new Gate(440, 450, 22, 150, '1');
-  stage.gateB = new Gate(870, 350, 22, 250, '2');
+  stage.gateA = gate(layout.gates.a, '1');
+  stage.gateB = gate(layout.gates.b, '2');
   stage.platforms.push(stage.bridge, stage.gateA, stage.gateB);
-
-  stage.plate = new PressurePlate(280, 442);
-  stage.winch = new Winch(740, 263);
+  stage.plate = new PressurePlate(layout.objects.plate.x, layout.objects.plate.y);
+  stage.winch = new Winch(layout.objects.winch.x, layout.objects.winch.y);
 
   // Maakt de energy sockets aan vanuit de configuratie
   stage.socketA = new EnergySocket(
@@ -56,17 +53,18 @@ export function initializeStage01ObjectSetup(stage) {
     (pad) => new PressurePlate(pad.x, pad.y, pad.width),
   );
 
-  stage.key = new Key(202, 284);
-  stage.keyPlatform = new Platform(80, 320, 165, 20, '#52548b');
+  stage.key = new Key(layout.objects.key.x, layout.objects.key.y);
+  stage.keyPlatform = platform(layout.platforms.key);
   stage.keyPlatform.active = true;
-  // Powered return stair folds out after the reactor restart, forming an upper loop.
-  stage.returnSteps = [new Platform(915, 505, 70, 18), new Platform(840, 410, 72, 18)];
+  // Powered return stair folds out after charging, forming an upper loop.
+  stage.returnSteps = layout.platforms.returnSteps.map(platform);
   stage.returnSteps.forEach((p) => {
     p.active = false;
   });
   stage.platforms.push(...stage.returnSteps);
   stage.platforms.push(stage.keyPlatform);
 
-  stage.door = new Door(1140, 510, 52, 90);
-  stage.exit = new Trigger(1100, 490, 100, 110);
+  const { door, exit } = layout.objects;
+  stage.door = new Door(door.x, door.y, door.width, door.height);
+  stage.exit = new Trigger(exit.x, exit.y, exit.width, exit.height);
 }

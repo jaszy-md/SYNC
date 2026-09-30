@@ -9,6 +9,10 @@ export class EnergyCell {
     });
   }
 
+  get cage() {
+    return { x: this.x - 15, y: this.y - 19, w: 54, h: 46 };
+  }
+
   draw(ctx) {
     if (['CAGED', 'LOOSE', 'CARRIED'].includes(this.state)) {
       this.drawAt(ctx, this.x, this.y);

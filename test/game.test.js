@@ -12,7 +12,7 @@ const step = (s, actions = [idle(), idle()], seconds = 0.1) => {
 const place = (p, x, y = 554) => Object.assign(p, { x, y, vx: 0, vy: 0, grounded: true });
 const holding = () => [{ ...idle(), interactHeld: true }, idle()];
 function releaseCell(s) {
-  place(s.players[0], 340, 404);
+  place(s.players[0], 340, 392);
   s.interact(s.players[0]);
   for (const symbol of s.symbolPuzzle.code) {
     place(s.players[1], s.symbolPuzzle.symbolBlocks.find((o) => o.symbol === symbol).x + 8);
@@ -28,46 +28,8 @@ function dockA(s) {
   s.interact(s.players[1]);
   step(s);
 }
-function solveRepair(s, repair) {
-  s.interact(s.players[1]);
-  for (const target of repair.code) {
-    for (let n = 0; repair.selection !== target && n < 4; n++) {
-      s.update(1 / 120, [
-        { ...idle(), interactHeld: true },
-        { ...idle(), move: 1 },
-      ]);
-      s.update(1 / 120, [{ ...idle(), interactHeld: true }, idle()]);
-    }
-    s.update(1 / 120, [
-      { ...idle(), interactHeld: true },
-      { ...idle(), interact: true },
-    ]);
-  }
-  assert.ok(repair.complete);
-}
-function repairCooling(s) {
-  place(s.players[0], 660, 259);
-  place(s.players[1], 810);
-  solveRepair(s, s.coolingRepair);
-  place(s.players[1], 560);
-}
-function repairArchive(s) {
-  place(s.players[0], 100, 274);
-  place(s.players[1], 100);
-  solveRepair(s, s.archiveRepair);
-}
-function restart(s) {
-  s.update(1 / 120, [{ ...idle(), interact: true }, idle()]);
-  step(s, [idle(), idle()], 1.3);
-  assert.equal(s.restartPuzzle.state, 'GREEN');
-  s.update(1 / 120, [{ ...idle(), interact: true }, idle()]);
-  assert.equal(s.restartPuzzle.state, 'CONFIRM');
-  s.update(1 / 120, [idle(), { ...idle(), interact: true }]);
-  assert.equal(s.restartPuzzle.state, 'READY');
-}
 function dockB(s) {
   dockA(s);
-  repairCooling(s);
   s.interact(s.players[1]);
   place(s.players[1], 980);
   s.interact(s.players[1]);
@@ -122,7 +84,7 @@ test('only Explorer can reach the high pressure plate from the start', () => {
       const a = [idle(), idle()];
       a[index] = { ...idle(), jump: f === 0, move: p.x < 300 ? 1 : 0 };
       s.update(1 / 120, a);
-      if (p.grounded && p.y === 404) landed = true;
+      if (p.grounded && p.y === 392) landed = true;
     }
     assert.equal(landed, expected);
   }
@@ -133,7 +95,7 @@ test('first gate follows remote pressure plate and refuses to crush a crossing p
   place(b, 400);
   step(s, [idle(), { ...idle(), move: 1 }], 0.5);
   assert.equal(b.x, 412);
-  place(a, 300, 404);
+  place(a, 300, 392);
   step(s);
   assert.equal(s.gateA.active, false);
   place(b, 445);
@@ -168,11 +130,10 @@ test('second gate requires Explorer holding the remote winch; Tech cannot substi
   const s = make(),
     [a, b] = s.players;
   dockA(s);
-  repairCooling(s);
-  place(b, 740, 259);
+  place(b, 740, 247);
   step(s, [idle(), { ...idle(), interactHeld: true }]);
   assert.equal(s.gateB.active, true);
-  place(a, 740, 259);
+  place(a, 740, 247);
   place(b, 560);
   step(s, holding());
   assert.equal(s.gateB.active, false);
@@ -206,7 +167,6 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   place(b, 1100);
   step(s, [{ ...idle(), interactHeld: true }, idle()], 3);
   assert.equal(s.charge, 0);
-  restart(s);
   const both = [
     { ...idle(), interactHeld: true },
     { ...idle(), interactHeld: true },
@@ -216,9 +176,6 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   step(s);
   assert.equal(s.charge, 0);
   step(s, both, 2.6);
-  assert.equal(s.phase, 'ARCHIVE');
-  assert.equal(s.key.state, 'HIDDEN');
-  repairArchive(s);
   assert.equal(s.phase, 'KEY');
   assert.equal(s.key.state, 'VISIBLE');
   assert.equal(s.door.state, 'LOCKED');
@@ -229,10 +186,10 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   step(s, both);
   assert.equal(s.complete, false);
   assert.equal(s.door.state, 'LOCKED');
-  place(b, 202, 274);
+  place(b, 202, 262);
   s.interact(b);
   assert.equal(s.key.state, 'VISIBLE');
-  place(a, 202, 274);
+  place(a, 202, 262);
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
   assert.equal(s.door.state, 'LOCKED');
@@ -263,11 +220,11 @@ test('only requested world hints reveal text, require entry, and follow progress
   step(s);
   assert.ok(s.helpMarker, 'standing on a new marker does not collect it');
   dockA(s);
-  assert.equal(s.helpMarker.id, 'cooling');
-  place(s.players[0], 670, 259);
+  assert.equal(s.helpMarker.id, 'climb');
+  place(s.players[0], s.winch.x, 247);
   step(s);
   assert.equal(s.helpMarker, null);
-  assert.match(s.message, /diagnosemonitor/);
+  assert.match(s.message, /lier/);
 });
 test('fresh stage resets cell, charge and gates without changing character identity', () => {
   const s = make();
@@ -308,8 +265,11 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
       { ...idle(), interact: true },
     ]);
   step(s);
+  walk(0, 70);
   jump(340);
   s.interact(a);
+  for (let f = 0; f < 100; f++)
+    s.update(1 / 120, [idle(), { ...idle(), jump: f === 0, move: s.players[1].x < 235 ? 1 : 0 }]);
   for (const symbol of s.symbolPuzzle.code) {
     walk(1, s.symbolPuzzle.symbolBlocks.find((o) => o.symbol === symbol).x + 8);
     useTech();
@@ -325,15 +285,9 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   assert.ok(s.bridge.active);
   walk(0, 350);
   jump(520);
-  assert.equal(a.y, 324);
+  assert.equal(a.y, 312);
   jump(720);
-  assert.equal(a.y, 259);
-  walk(0, 660);
-  walk(1, 625);
-  walk(1, 810, { crouch: true });
-  solveRepair(s, s.coolingRepair);
-  walk(1, 625, { crouch: true });
-  walk(1, 560);
+  assert.equal(a.y, 247);
   walk(0, 740);
   useTech(true);
   assert.equal(s.cell.state, 'CARRIED');
@@ -346,7 +300,6 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   walk(0, 1035);
   step(s, [idle(), idle()], 1);
   walk(1, 1100);
-  restart(s);
   step(
     s,
     [
@@ -355,26 +308,25 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
     ],
     2.6,
   );
-  assert.equal(s.phase, 'ARCHIVE');
-  assert.equal(s.key.state, 'HIDDEN');
+  assert.equal(s.phase, 'KEY');
+  assert.equal(s.key.state, 'VISIBLE');
   assert.equal(s.door.state, 'LOCKED');
   walk(0, 1000);
   jump(945);
-  assert.equal(a.y, 459);
+  assert.equal(a.y, 447);
   jump(860);
-  assert.equal(a.y, 364);
+  assert.equal(a.y, 352);
   jump(750);
-  assert.equal(a.y, 259);
+  assert.equal(a.y, 247);
   walk(0, 660);
   jump(520);
   jump(340);
-  assert.equal(a.y, 404);
+  assert.equal(a.y, 392);
   jump(110);
-  assert.equal(a.y, 274);
+  assert.equal(a.y, 262);
   walk(1, 790);
   walk(1, 620, { crouch: true });
   walk(1, 105);
-  solveRepair(s, s.archiveRepair);
   assert.equal(s.phase, 'KEY');
   walk(0, 202);
   s.interact(a);
@@ -407,15 +359,15 @@ test('symbol cage requires both roles, a present reader and the correct sequence
   };
   choose(s.symbolPuzzle.code[0]);
   assert.equal(s.symbolPuzzle.matchIndex, 0);
-  place(b, 340, 404);
+  place(b, 340, 392);
   s.interact(b);
   assert.equal(s.symbolPuzzle.clue.state, 'UNREAD');
-  place(a, 340, 404);
+  place(a, 340, 392);
   s.interact(a);
   place(a, 70);
   choose(s.symbolPuzzle.code[0]);
   assert.equal(s.symbolPuzzle.matchIndex, 0);
-  place(a, 340, 404);
+  place(a, 340, 392);
   choose(s.symbolPuzzle.code[1]);
   assert.equal(s.symbolPuzzle.matchIndex, 0);
   choose(s.symbolPuzzle.code[0]);

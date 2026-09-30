@@ -29,6 +29,13 @@ export class EnergyCell {
   }
 
   drawAt(ctx, x, y) {
+    ctx.save();
+    ctx.shadowColor = '#ffe3a1';
+    ctx.shadowBlur = 13;
+    ctx.strokeStyle = '#fff1b9';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 1, y - 1, this.w + 2, this.h + 2);
+    ctx.shadowBlur = 0;
     // Tekent de batterij op basis van de ingestelde afmetingen
     ctx.fillStyle = '#b1a77c';
     ctx.fillRect(x, y, this.w, this.h);
@@ -63,5 +70,6 @@ export class EnergyCell {
     ctx.lineTo(x + 13 * scaleX, y + 10 * scaleY);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }
 }

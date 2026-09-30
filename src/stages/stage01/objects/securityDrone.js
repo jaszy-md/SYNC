@@ -54,14 +54,28 @@ export class SecurityDrone {
     const color = !this.active || this.disabled > 0 ? '#76bda0' : '#edac62';
     ctx.fillStyle = '#141c1d';
     ctx.fillRect(this.x - 4, this.y + 22, 42, 7);
-    ctx.fillStyle = '#53605a';
+    ctx.fillStyle = '#748a96';
     ctx.fillRect(this.x, this.y, this.w, this.h);
-    ctx.strokeStyle = '#92998a';
+    ctx.strokeStyle = '#d2ede4';
     ctx.strokeRect(this.x + 3, this.y + 3, this.w - 6, this.h - 6);
     ctx.fillStyle = color;
     ctx.fillRect(this.x + (this.direction < 0 ? 3 : 23), this.y + 8, 8, 5);
     ctx.font = '10px monospace';
-    ctx.fillText(this.disabled > 0 ? 'BYPASS' : 'SEC-04', this.x - 3, this.y - 8);
+    ctx.fillText(
+      this.disabled > 0
+        ? 'BYPASS ' + Math.ceil(this.disabled)
+        : this.time % 5 < 1.5
+          ? 'SCAN / WACHT'
+          : this.direction < 0
+            ? '← SEC-04'
+            : 'SEC-04 →',
+      this.x - 3,
+      this.y - 8,
+    );
+    ctx.fillStyle = '#bde6df';
+    ctx.fillRect(this.x + 3, this.y + 2, this.w - 6, 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(this.x + 12, this.y - 3 - Math.sin(this.time * 4) * 2, 9, 3);
     if (this.active && !this.disabled) {
       ctx.fillStyle = '#e8ab5520';
       ctx.beginPath();

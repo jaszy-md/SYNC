@@ -1,3 +1,4 @@
+import { drawRepairPanel, drawRepairStations } from './puzzles/repairPanelView.js';
 import {
   drawFacilityBackground,
   drawFacilityStructure,
@@ -62,7 +63,7 @@ function drawConnections(ctx, stage) {
       [1165, 480],
       [1165, 510],
     ],
-    ['CHARGE', 'KEY', 'EXIT'].includes(stage.phase),
+    ['CHARGE', 'ARCHIVE', 'KEY', 'EXIT'].includes(stage.phase),
   );
 
   ctx.setLineDash([]);
@@ -127,12 +128,28 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
   drawEnergyPuzzle(ctx, stage);
 
   drawRepairSystems(ctx, stage);
+  drawRepairStations(
+    ctx,
+    stage.coolingRepair,
+    stage.players,
+    stage.phase === 'TRANSFER',
+    stage.time,
+  );
+  drawRepairStations(
+    ctx,
+    stage.archiveRepair,
+    stage.players,
+    stage.phase === 'ARCHIVE',
+    stage.time,
+  );
   stage.guardian.draw(ctx);
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
 
   stage.helpMarker?.draw(ctx, stage.time);
   drawStage01ControlHints(ctx, stage, bindings);
+
+  if (stage.activeRepair) drawRepairPanel(ctx, stage.activeRepair, bindings);
 
   if (debug) {
     ctx.strokeStyle = '#ff7493';

@@ -28,15 +28,33 @@ function dockA(s) {
   s.interact(s.players[1]);
   step(s);
 }
-function repairWiring(s) {
+function solveRepair(s, repair) {
+  s.interact(s.players[1]);
+  for (const target of repair.code) {
+    for (let n = 0; repair.selection !== target && n < 4; n++) {
+      s.update(1 / 120, [
+        { ...idle(), interactHeld: true },
+        { ...idle(), move: 1 },
+      ]);
+      s.update(1 / 120, [{ ...idle(), interactHeld: true }, idle()]);
+    }
+    s.update(1 / 120, [
+      { ...idle(), interactHeld: true },
+      { ...idle(), interact: true },
+    ]);
+  }
+  assert.ok(repair.complete);
+}
+function repairCooling(s) {
   place(s.players[0], 660, 259);
   place(s.players[1], 810);
-  for (const target of s.wiringPuzzle.code) {
-    while (s.wiringPuzzle.selection !== target) s.interact(s.players[1]);
-    s.interact(s.players[0]);
-  }
-  assert.ok(s.wiringPuzzle.complete);
+  solveRepair(s, s.coolingRepair);
   place(s.players[1], 560);
+}
+function repairArchive(s) {
+  place(s.players[0], 100, 274);
+  place(s.players[1], 100);
+  solveRepair(s, s.archiveRepair);
 }
 function restart(s) {
   s.update(1 / 120, [{ ...idle(), interact: true }, idle()]);
@@ -49,7 +67,7 @@ function restart(s) {
 }
 function dockB(s) {
   dockA(s);
-  repairWiring(s);
+  repairCooling(s);
   s.interact(s.players[1]);
   place(s.players[1], 980);
   s.interact(s.players[1]);
@@ -150,7 +168,7 @@ test('second gate requires Explorer holding the remote winch; Tech cannot substi
   const s = make(),
     [a, b] = s.players;
   dockA(s);
-  repairWiring(s);
+  repairCooling(s);
   place(b, 740, 259);
   step(s, [idle(), { ...idle(), interactHeld: true }]);
   assert.equal(s.gateB.active, true);
@@ -198,6 +216,9 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   step(s);
   assert.equal(s.charge, 0);
   step(s, both, 2.6);
+  assert.equal(s.phase, 'ARCHIVE');
+  assert.equal(s.key.state, 'HIDDEN');
+  repairArchive(s);
   assert.equal(s.phase, 'KEY');
   assert.equal(s.key.state, 'VISIBLE');
   assert.equal(s.door.state, 'LOCKED');
@@ -208,10 +229,10 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   step(s, both);
   assert.equal(s.complete, false);
   assert.equal(s.door.state, 'LOCKED');
-  place(b, 1000, 404);
+  place(b, 202, 274);
   s.interact(b);
   assert.equal(s.key.state, 'VISIBLE');
-  place(a, 1000, 404);
+  place(a, 202, 274);
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
   assert.equal(s.door.state, 'LOCKED');
@@ -242,7 +263,7 @@ test('only requested world hints reveal text, require entry, and follow progress
   step(s);
   assert.ok(s.helpMarker, 'standing on a new marker does not collect it');
   dockA(s);
-  assert.equal(s.helpMarker.id, 'wiring');
+  assert.equal(s.helpMarker.id, 'cooling');
   place(s.players[0], 670, 259);
   step(s);
   assert.equal(s.helpMarker, null);
@@ -310,11 +331,7 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   walk(0, 660);
   walk(1, 625);
   walk(1, 810, { crouch: true });
-  for (const target of s.wiringPuzzle.code) {
-    while (s.wiringPuzzle.selection !== target) useTech();
-    s.interact(a);
-  }
-  assert.ok(s.wiringPuzzle.complete);
+  solveRepair(s, s.coolingRepair);
   walk(1, 625, { crouch: true });
   walk(1, 560);
   walk(0, 740);
@@ -338,17 +355,38 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
     ],
     2.6,
   );
-  assert.equal(s.phase, 'KEY');
+  assert.equal(s.phase, 'ARCHIVE');
+  assert.equal(s.key.state, 'HIDDEN');
   assert.equal(s.door.state, 'LOCKED');
-  walk(0, 870);
-  jump(1005);
+  walk(0, 1000);
+  jump(945);
+  assert.equal(a.y, 459);
+  jump(860);
+  assert.equal(a.y, 364);
+  jump(750);
+  assert.equal(a.y, 259);
+  walk(0, 660);
+  jump(520);
+  jump(340);
   assert.equal(a.y, 404);
+  jump(110);
+  assert.equal(a.y, 274);
+  walk(1, 790);
+  walk(1, 620, { crouch: true });
+  walk(1, 105);
+  solveRepair(s, s.archiveRepair);
+  assert.equal(s.phase, 'KEY');
+  walk(0, 202);
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
+  walk(0, 620);
+  walk(0, 800, { crouch: true });
   walk(0, 1120);
   step(s, [idle(), idle()], 1);
   s.interact(a);
   assert.equal(s.door.state, 'UNLOCKED');
+  walk(1, 620);
+  walk(1, 800, { crouch: true });
   walk(1, 1150);
   step(s, [
     { ...idle(), interactHeld: true },

@@ -56,9 +56,15 @@ export function initializeStage01ObjectSetup(stage) {
     (pad) => new PressurePlate(pad.x, pad.y, pad.width),
   );
 
-  stage.key = new Key(1000, 414);
-  stage.keyPlatform = new Platform(965, 450, 135, 18, '#52548b');
-  stage.keyPlatform.active = false;
+  stage.key = new Key(202, 284);
+  stage.keyPlatform = new Platform(80, 320, 165, 20, '#52548b');
+  stage.keyPlatform.active = true;
+  // Powered return stair folds out after the reactor restart, forming an upper loop.
+  stage.returnSteps = [new Platform(915, 505, 70, 18), new Platform(840, 410, 72, 18)];
+  stage.returnSteps.forEach((p) => {
+    p.active = false;
+  });
+  stage.platforms.push(...stage.returnSteps);
   stage.platforms.push(stage.keyPlatform);
 
   stage.door = new Door(1140, 510, 52, 90);

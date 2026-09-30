@@ -160,7 +160,7 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   place(tech, 740, 259);
   assert.equal(hints(stage).length, 0);
   stage.phase = 'TRANSFER';
-  stage.wiringPuzzle.complete = true;
+  stage.coolingRepair.complete = true;
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
@@ -191,7 +191,7 @@ test('winch and two charging contacts reuse stage eligibility and keep player in
   stage.chargePads[1].update([tech]);
   stage.restartPuzzle.state = 'READY';
   stage.energyPuzzle.updateCharging(2.6, [{ interactHeld: true }, { interactHeld: true }]);
-  assert.equal(stage.phase, 'KEY');
+  assert.equal(stage.phase, 'ARCHIVE');
   assert.equal(hints(stage).length, 0);
 });
 
@@ -199,15 +199,15 @@ test('key, unlock and exit hints follow exact ranges, ownership and completed st
   const stage = make(),
     [reader, tech] = stage.players;
   stage.phase = 'KEY';
-  place(reader, 1000, 404);
-  place(tech, 1000, 404);
+  place(reader, 202, 274);
+  place(tech, 202, 274);
   assert.equal(hints(stage).length, 0, 'hidden key is unavailable');
   stage.key.reveal();
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
   );
-  place(reader, stage.key.x + stage.key.w + 20, 404);
+  place(reader, stage.key.x + stage.key.w + 20, 274);
   assert.equal(hints(stage).length, 0, 'exact range edge is excluded');
   reader.x -= 0.1;
   assert.equal(hints(stage)[0].object, stage.key);
@@ -257,7 +257,7 @@ test('all phase queries preserve gameplay state even for denied interactions', (
 test('rendering draws only mapped labels, circle/keycap shapes and bounded fade/pulse without changing the stage', () => {
   const stage = make();
   stage.phase = 'TRANSFER';
-  stage.wiringPuzzle.complete = true;
+  stage.coolingRepair.complete = true;
   stage.cell.state = 'SOCKET_A';
   place(stage.players[0], 740, 259);
   place(stage.players[1], 560);

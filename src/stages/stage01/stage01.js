@@ -64,7 +64,26 @@ export class Stage1 {
 
     this.players.forEach((player, index) => {
       this.health[index].invulnerable = Math.max(0, this.health[index].invulnerable - dt);
-      player.update(effectiveInputs[index], dt, this.solids, stage01Config.width);
+      const feetBefore = player.y + player.h;
+      const wasGrounded = player.grounded;
+      const guardTop = this.guardian.topSurface;
+      const canLandOnGuard = this.guardian.active && player.vy >= 0 && feetBefore <= guardTop.y;
+      player.update(
+        effectiveInputs[index],
+        dt,
+        canLandOnGuard ? [...this.solids, guardTop] : this.solids,
+        stage01Config.width,
+      );
+      if (
+        canLandOnGuard &&
+        !wasGrounded &&
+        player.grounded &&
+        Math.abs(player.y + player.h - guardTop.y) < 0.01 &&
+        player.x + player.w > guardTop.x &&
+        player.x < guardTop.x + guardTop.w
+      ) {
+        this.guardian.stomp(player);
+      }
       this.runTime[index] =
         !player.crouched && Math.abs(player.vx) >= 220 ? this.runTime[index] + dt : 0;
       player.stage01Rushing = this.runTime[index] >= 0.25;

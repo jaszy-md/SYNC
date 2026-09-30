@@ -197,15 +197,15 @@ test('key, unlock and exit hints follow exact ranges, ownership and completed st
   const stage = make(),
     [reader, tech] = stage.players;
   stage.phase = 'KEY';
-  place(reader, 202, 262);
-  place(tech, 202, 262);
+  place(reader, stage.key.x, stage.keyPlatform.y - reader.h);
+  place(tech, stage.key.x, stage.keyPlatform.y - tech.h);
   assert.equal(hints(stage).length, 0, 'hidden key is unavailable');
   stage.key.reveal();
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
   );
-  place(reader, stage.key.x + stage.key.w + 20, 262);
+  place(reader, stage.key.x + stage.key.w + 20, stage.keyPlatform.y - reader.h);
   assert.equal(hints(stage).length, 0, 'exact range edge is excluded');
   reader.x -= 0.1;
   assert.equal(hints(stage)[0].object, stage.key);

@@ -1,4 +1,5 @@
 import { near, overlaps } from '../../../core/physics/collision.js';
+import { stage01Config } from '../stage01Config.js';
 import { stage01LayoutConfig } from '../stage01LayoutConfig.js';
 import { stage01Image, drawStage01Image } from '../stage01Assets.js';
 
@@ -25,6 +26,8 @@ export class SecurityDrone {
       retreat: 0,
       knockDirection: 0,
       moving: false,
+      stompRetreat: 0,
+      hitFlash: 0,
     });
   }
 
@@ -41,21 +44,44 @@ export class SecurityDrone {
     return 'HANDLED';
   }
 
+  get topSurface() {
+    // Match the sprite's head, which extends above the patrol collision body.
+    return { x: this.x, y: this.y + this.h - 72, w: this.w, h: 6 };
+  }
+
+  stomp(player) {
+    if (this.disabled > 0) return;
+    this.disabled = 4;
+    this.projectiles = [];
+    this.shotTimer = 1.8;
+    this.stagger = 0;
+    this.stompRetreat = 1.4;
+    this.hitFlash = 0.65;
+    const away = Math.sign(this.x + this.w / 2 - (player.x + player.w / 2));
+    this.direction = away || -this.direction;
+  }
+
   update(dt, players, enabled, solids = [], onHit = () => {}) {
     this.active = enabled;
     this.time += dt;
     this.disabled = Math.max(0, this.disabled - dt);
+    this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.cooldown = this.cooldown.map((value) => Math.max(0, value - dt));
     this.moving = false;
     if (!enabled) {
       this.projectiles = [];
       return;
     }
+    if (this.stompRetreat > 0) {
+      this.moving = true;
+      this.movePatrol(this.direction * 65 * Math.min(dt, this.stompRetreat), solids);
+      this.stompRetreat = Math.max(0, this.stompRetreat - dt);
+      return;
+    }
     this.updateProjectiles(dt, players, solids, onHit);
     if (this.disabled > 0) return;
     if (this.stagger > 0) {
-      this.x += this.knockDirection * 90 * Math.min(dt, this.stagger);
-      this.clampPatrol();
+      this.movePatrol(this.knockDirection * 90 * Math.min(dt, this.stagger), solids);
       this.stagger = Math.max(0, this.stagger - dt);
       if (this.stagger === 0) {
         this.direction *= -1;
@@ -80,8 +106,7 @@ export class SecurityDrone {
     // Keep the original scan pause; a shove temporarily overrides it.
     this.moving = this.retreat > 0 || this.time % 5 >= 1.5;
     if (this.moving) {
-      this.x += this.direction * 65 * dt;
-      this.clampPatrol();
+      this.movePatrol(this.direction * 65 * dt, solids);
     }
     this.shotTimer -= dt;
     if (this.shotTimer <= 0 && this.retreat === 0) {
@@ -93,12 +118,25 @@ export class SecurityDrone {
     }
   }
 
-  clampPatrol() {
+  movePatrol(distance, solids) {
     const { patrolMin, patrolMax } = stage01LayoutConfig.objects.guard;
-    if (this.x < patrolMin || this.x > patrolMax) {
-      this.x = Math.max(patrolMin, Math.min(patrolMax, this.x));
-      if (!this.stagger) this.direction *= -1;
+    const left = Math.max(0, patrolMin);
+    const right = Math.min(stage01Config.width - this.w, patrolMax);
+    let nextX = Math.max(left, Math.min(right, this.x + distance));
+    for (const solid of solids) {
+      if (this.y >= solid.y + solid.h || this.y + this.h <= solid.y) continue;
+      // Sweep the horizontal edge, so knockback and large steps cannot tunnel through gates.
+      if (distance > 0 && this.x + this.w <= solid.x && nextX + this.w > solid.x)
+        nextX = Math.min(nextX, solid.x - this.w);
+      else if (distance < 0 && this.x >= solid.x + solid.w && nextX < solid.x + solid.w)
+        nextX = Math.max(nextX, solid.x + solid.w);
+      else if (overlaps(this, solid)) {
+        // A gate can close over a guard: move him to the nearest side, never through it.
+        nextX = this.x + this.w / 2 < solid.x + solid.w / 2 ? solid.x - this.w : solid.x + solid.w;
+      }
     }
+    if (nextX !== this.x + distance && !this.stagger) this.direction *= -1;
+    this.x = Math.max(left, Math.min(right, nextX));
   }
 
   fire(player) {
@@ -145,6 +183,11 @@ export class SecurityDrone {
   draw(ctx) {
     const image = stage01Image(this.moving ? 'guard_side' : 'guard_front');
     ctx.save();
+    if (this.hitFlash > 0 && Math.floor(this.hitFlash * 16) % 2) {
+      ctx.filter = 'sepia(1) saturate(8) hue-rotate(315deg)';
+      ctx.shadowColor = '#ff526c';
+      ctx.shadowBlur = 12;
+    }
     const color =
       this.stagger > 0 ? '#ffe3a1' : !this.active || this.disabled > 0 ? '#76bda0' : '#edac62';
     ctx.fillStyle = '#050c1399';
@@ -164,6 +207,8 @@ export class SecurityDrone {
       ctx.fillStyle = color;
       ctx.fillRect(this.x + (this.direction < 0 ? 3 : 23), this.y + 8, 8, 5);
     }
+    ctx.filter = 'none';
+    ctx.shadowBlur = 0;
     // A bright muzzle warning precedes each slow shot.
     if (this.active && !this.disabled && !this.stagger && !this.retreat && this.shotTimer < 0.4) {
       ctx.fillStyle = '#ffac6e';

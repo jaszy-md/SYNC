@@ -57,7 +57,7 @@ test('independent movement, gravity, landing, jump and crouch clearance', () => 
   assert.equal(p.y, 574);
   p.x = 700;
   s.update(1 / 120, [idle(), idle()]);
-  assert.equal(p.h, 26);
+  assert.equal(p.h, 46, 'removed duct no longer prevents standing');
   p.x = 800;
   s.update(1 / 120, [idle(), idle()]);
   assert.equal(p.h, 46);
@@ -186,10 +186,10 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   step(s, both);
   assert.equal(s.complete, false);
   assert.equal(s.door.state, 'LOCKED');
-  place(b, 202, 262);
+  place(b, s.key.x, s.keyPlatform.y - b.h);
   s.interact(b);
   assert.equal(s.key.state, 'VISIBLE');
-  place(a, 202, 262);
+  place(a, s.key.x, s.keyPlatform.y - a.h);
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
   assert.equal(s.door.state, 'LOCKED');
@@ -323,12 +323,12 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   jump(340);
   assert.equal(a.y, 392);
   jump(110);
-  assert.equal(a.y, 262);
+  assert.equal(a.y, s.keyPlatform.y - a.h);
   walk(1, 790);
   walk(1, 620, { crouch: true });
   walk(1, 105);
   assert.equal(s.phase, 'KEY');
-  walk(0, 202);
+  walk(0, s.key.x);
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
   walk(0, 620);

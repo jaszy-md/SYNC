@@ -13,7 +13,7 @@ import { energyPuzzleConfig } from './puzzles/energyPuzzle/energyPuzzleConfig.js
 export function initializeStage01ObjectSetup(stage) {
   const platform = ({ x, y, width, height }) => new Platform(x, y, width, height);
   const gate = (rect, label) => new Gate(rect.x, rect.y, rect.width, rect.height, label);
-  stage.platforms = ['floor', 'access', 'maintenance', 'duct'].map((name) =>
+  stage.platforms = ['floor', 'access', 'maintenance'].map((name) =>
     platform(layout.platforms[name]),
   );
   stage.bridge = platform(layout.platforms.bridge);

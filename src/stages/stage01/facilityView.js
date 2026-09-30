@@ -235,22 +235,7 @@ export function drawFacilityStructure(ctx, stage) {
   ctx.fillStyle = '#98a798';
 
   ctx.fillText('01 / ACCESS ARCHIVE', 210, 485);
-  ctx.fillText('SECURITY VAULT', 80, 350);
-
-  machine(
-    ctx,
-    { x: stage.key.x - 8, y: stage.keyPlatform.y - 55, w: 44, h: 55 },
-    'AUTH',
-    ['KEY', 'EXIT'].includes(stage.phase) ? 'ONLINE' : 'OFF',
-  );
-
-  if (!['KEY', 'EXIT'].includes(stage.phase)) {
-    ctx.fillStyle = '#e0b567';
-    ctx.font = 'bold 22px monospace';
-    ctx.fillText('×', stage.key.x + 5, stage.keyPlatform.y - 20);
-  }
-
-  ctx.font = '11px monospace';
+  ctx.fillText('SECURITY VAULT', stage.keyPlatform.x, stage.keyPlatform.y + 42);
 
   if (stage.returnSteps[0].active) {
     ctx.fillText('← RETURN CATWALK', 837, 387);
@@ -274,7 +259,6 @@ export function drawFacilityStructure(ctx, stage) {
   }
 
   ctx.fillText('02 / MAINTENANCE', 645, 348);
-  ctx.fillText('↓ SERVICE DUCT', 650, 519);
   ctx.fillText('03 / REACTOR', 969, 384);
 
   for (const pad of [stage.plate, ...stage.chargePads]) {

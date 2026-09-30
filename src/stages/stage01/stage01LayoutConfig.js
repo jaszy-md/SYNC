@@ -4,9 +4,8 @@ export const stage01LayoutConfig = {
     floor: { x: 0, y: 600, width: 1200, height: 60 },
     access: { x: 210, y: 438, width: 200, height: 20 },
     maintenance: { x: 645, y: 293, width: 175, height: 20 },
-    duct: { x: 660, y: 535, width: 105, height: 30 },
     bridge: { x: 465, y: 358, width: 140, height: 18 },
-    key: { x: 80, y: 308, width: 165, height: 20 },
+    key: { x: 24, y: 288, width: 165, height: 20 },
     returnSteps: [
       { x: 915, y: 493, width: 70, height: 18 },
       { x: 840, y: 398, width: 72, height: 18 },
@@ -19,7 +18,7 @@ export const stage01LayoutConfig = {
   objects: {
     plate: { x: 280, y: 430 },
     winch: { x: 740, y: 251 },
-    key: { x: 202, y: 272 },
+    key: { x: 146, y: 252 },
     door: { x: 1140, y: 510, width: 52, height: 90 },
     exit: { x: 1100, y: 490, width: 100, height: 110 },
     cell: { x: 185, y: 572, width: 24, height: 26 },

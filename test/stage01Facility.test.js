@@ -244,8 +244,17 @@ test('robot, held switch and patrol/front sprites render with fallbacks and corr
   assert.equal(
     calls.filter(([name, image]) => name === 'drawImage' && image.src.endsWith('symbol_robot.png'))
       .length,
-    4,
+    3,
   );
+  assert.equal(
+    calls.filter(([name, image]) => name === 'drawImage' && image.src.endsWith('symbol_screen.png'))
+      .length,
+    1,
+  );
+  const clue = stage.symbolPuzzle.clue;
+  const center = calls.find(([name, text]) => name === 'fillText' && text === '···');
+  assert.equal(center[2], clue.x + clue.w / 2);
+  assert.ok(Math.abs(center[3] - (clue.y + clue.h - 110 * 0.92 + 110 * 0.32)) < 0.001);
   assert.ok(calls.some(([name, text]) => name === 'fillText' && text === '△'));
   assert.ok(calls.some(([name, text]) => name === 'fillText' && text === 'P1'));
   const winch = new Winch(0, 0);
@@ -276,4 +285,81 @@ test('robot, held switch and patrol/front sprites render with fallbacks and corr
   assert.ok(
     calls.some(([name, image]) => name === 'drawImage' && image.src.endsWith('guard_front.png')),
   );
+});
+
+test('guard patrol and knockback respect closed gates but ignore non-solid equipment', () => {
+  const stage = make(),
+    guard = stage.guardian;
+  guard.x = 910;
+  guard.time = 2;
+  guard.update(1, [], true, stage.solids);
+  assert.equal(guard.x, stage.gateB.x + stage.gateB.w);
+  assert.equal(guard.direction, 1);
+  guard.stagger = 0.35;
+  guard.knockDirection = -1;
+  guard.update(0.35, [], true, stage.solids);
+  assert.ok(guard.x >= stage.gateB.x + stage.gateB.w);
+  stage.gateB.active = false;
+  guard.direction = -1;
+  guard.stagger = 0;
+  guard.time = 2;
+  guard.update(1, [], true, stage.solids);
+  assert.ok(guard.x < stage.gateB.x, 'open gate is traversable');
+  for (let i = 0; i < 1200; i++) guard.update(1 / 120, [], true, stage.solids);
+  assert.ok(guard.x >= 780 && guard.x <= 925);
+  assert.ok(!stage.solids.includes(stage.socketB), 'equipment is not a wall');
+});
+
+test('removed duct has no collision and AUTH/duct labels are not rendered', () => {
+  const stage = make();
+  assert.ok(!stage.platforms.some((p) => p.x === 660 && p.y === 535));
+  assert.equal(stage.keyPlatform.x, 24);
+  assert.equal(stage.keyPlatform.y, 288);
+  const labels = [];
+  const ctx = new Proxy(
+    {
+      canvas: { width: 1200 },
+      createLinearGradient: () => ({ addColorStop() {} }),
+      measureText: () => ({ width: 10 }),
+      fillText: (label) => labels.push(label),
+    },
+    { get: (target, key) => target[key] ?? (() => {}) },
+  );
+  stage.draw(ctx);
+  assert.ok(!labels.includes('AUTH'));
+  assert.ok(!labels.some((label) => label.includes('SERVICE DUCT')));
+});
+
+test('landing on guard head supports the player, silences fire for four seconds and retreats', () => {
+  const stage = make(),
+    guard = stage.guardian,
+    player = stage.players[0];
+  stage.phase = 'CHARGE';
+  stage.cell.state = 'SOCKET_B';
+  guard.active = true;
+  guard.x = 910;
+  const headY = guard.topSurface.y;
+  Object.assign(player, { x: guard.x + 3, y: headY - player.h - 2, vy: 100, grounded: false });
+  guard.fire(stage.players[1]);
+  tick(stage, undefined, 3);
+  assert.ok(guard.disabled > 3.98);
+  assert.equal(player.y + player.h, headY);
+  assert.equal(player.grounded, true);
+  assert.equal(guard.projectiles.length, 0);
+  assert.ok(guard.hitFlash > 0);
+  assert.ok(guard.stompRetreat > 0);
+  const afterLandingX = guard.x;
+  guard.update(0.1, [], true, stage.solids);
+  assert.notEqual(guard.x, afterLandingX, 'stomp disable does not freeze the retreat');
+  guard.update(guard.disabled - 0.01, [player], true, stage.solids);
+  assert.ok(guard.disabled > 0);
+  assert.equal(guard.projectiles.length, 0);
+  guard.update(0.02, [player], true, stage.solids);
+  assert.equal(guard.disabled, 0);
+  Object.assign(player, { x: 1010, y: 554 });
+  guard.update(1.81, [player], true, stage.solids);
+  assert.equal(guard.projectiles.length, 1, 'normal firing resumes');
+  stage.reset();
+  assert.equal(stage.guardian.stompRetreat, 0);
+  assert.equal(stage.guardian.hitFlash, 0);
 });

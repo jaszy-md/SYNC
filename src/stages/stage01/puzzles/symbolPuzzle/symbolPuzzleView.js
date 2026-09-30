@@ -4,7 +4,8 @@ import { symbolPuzzleConfig } from './symbolPuzzleConfig.js';
 import { stage01Image, drawStage01Image } from '../../stage01Assets.js';
 
 function drawTerminal(ctx, rect, symbol, active, label) {
-  const image = stage01Image('symbol_robot');
+  const isScreen = rect.w > 50;
+  const image = stage01Image(isScreen ? 'symbol_screen' : 'symbol_robot');
   ctx.save();
   if (image) {
     const size = rect.w > 50 ? 110 : 86;
@@ -15,14 +16,22 @@ function drawTerminal(ctx, rect, symbol, active, label) {
       h: size,
     };
     drawStage01Image(ctx, image, frame);
-    // The chest display is centered at 49% / 50% in the uncropped source image.
+    // Source coordinates: screen display center 50% / 32%; robot chest 49% / 50%.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = `bold ${rect.w > 50 ? 14 : 18}px monospace`;
+    ctx.font = `bold ${isScreen ? 20 : 18}px monospace`;
     ctx.fillStyle = active ? '#baffed' : '#ffe0a5';
     ctx.shadowColor = '#08161a';
     ctx.shadowBlur = 3;
-    ctx.fillText(symbol, frame.x + size * 0.49, frame.y + size * 0.5, size * 0.21);
+    const scale = Math.min(frame.w / image.naturalWidth, frame.h / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    ctx.fillText(
+      symbol,
+      frame.x + (size - width) / 2 + width * (isScreen ? 0.5 : 0.49),
+      frame.y + (size - height) / 2 + height * (isScreen ? 0.32 : 0.5),
+      width * (isScreen ? 0.44 : 0.21),
+    );
   } else {
     machine(ctx, rect, label, active ? 'ONLINE' : 'OFF');
     ctx.fillStyle = active ? '#87d4a2' : '#c2b791';

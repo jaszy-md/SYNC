@@ -110,7 +110,6 @@ function drawAffordances(ctx, stage) {
   ctx.fillStyle = '#b9afd1';
   ctx.font = '12px monospace';
   ctx.fillText('P1 ↓', stage.plate.x + 14, stage.plate.y - 12);
-  ctx.fillText('↓', 703, 522);
 
   if (stage.ping && stage.ping.until > stage.time) {
     ctx.fillStyle = '#f379d0';

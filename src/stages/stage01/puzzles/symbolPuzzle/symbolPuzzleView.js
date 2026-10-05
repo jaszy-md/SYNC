@@ -1,3 +1,4 @@
+import { stage01Config } from '../../stage01Config.js';
 import { machine } from '../../facilityView.js';
 import { near } from '../../../../core/physics/collision.js';
 import { symbolPuzzleConfig } from './symbolPuzzleConfig.js';
@@ -7,11 +8,19 @@ function drawTerminal(ctx, rect, symbol, active, label) {
   const isScreen = rect.w > 50;
   const image = stage01Image(isScreen ? 'symbol_screen' : 'symbol_robot');
   ctx.save();
+  if (active) {
+    ctx.shadowColor = '#64e4ff';
+    ctx.shadowBlur = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      ? 12
+      : 12 + Math.sin(performance.now() / 450) * 3;
+  }
   if (image) {
-    const size = rect.w > 50 ? 110 : 86;
+    const size = isScreen
+      ? stage01Config.interactionVisuals.terminalSize
+      : stage01Config.interactionVisuals.robotSize;
     const frame = {
       x: rect.x + rect.w / 2 - size / 2,
-      y: rect.y + rect.h - size * 0.92,
+      y: rect.y + rect.h - size * stage01Config.interactionVisuals.spriteHeightRatio,
       w: size,
       h: size,
     };
@@ -54,13 +63,23 @@ export function drawSymbolPuzzle(ctx, puzzle, players) {
     ctx,
     puzzle.clue,
     clueVisible ? puzzle.clue.symbol : '···',
-    clueVisible,
+    clueVisible || (reader !== undefined && puzzle.clue.canRead(reader)),
     'ACCESS / P1',
   );
 
   // Tekent de drie symboolblokken
   puzzle.symbolBlocks.forEach((block) => {
-    drawTerminal(ctx, block, block.symbol, block.state === 'ON', 'ACCESS');
+    drawTerminal(
+      ctx,
+      block,
+      block.symbol,
+      block.state === 'ON' ||
+        (puzzle.clue.state === 'READ' &&
+          reader &&
+          near(reader, puzzle.clue, 25) &&
+          players.some((player) => player.abilities.operateSwitch && near(player, block, 14))),
+      'ACCESS',
+    );
   });
 
   // Tekent de voortgang van de ingevoerde symboolcode

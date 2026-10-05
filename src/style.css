@@ -67,13 +67,7 @@ button.compact {
   padding: 8px 14px;
   font-size: 13px;
 }
-#pause {
-  border-radius: 14px 9px 14px 9px;
-  background: var(--purple);
-  border-color: var(--purple);
-  color: #10172b;
-  letter-spacing: 0.04em;
-}
+
 button.ghost {
   background: transparent;
   color: var(--muted);
@@ -808,23 +802,7 @@ canvas {
   border-radius: 12px;
   background: #10162c;
 }
-#hint-toast {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: min(640px, calc(100% - 32px));
-  pointer-events: none;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 12px 18px;
-  border: 1px solid var(--yellow);
-  border-radius: 8px;
-  color: #d7c9ef;
-  background: #171a31f2;
-}
+
 footer {
   display: flex;
   justify-content: center;
@@ -1139,9 +1117,7 @@ footer {
     font-size: 7px;
     letter-spacing: 1px;
   }
-  #hint-toast {
-    font-size: 11px;
-  }
+
   .overlay .sheet {
     padding: 16px;
   }

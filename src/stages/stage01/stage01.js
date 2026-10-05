@@ -7,7 +7,7 @@ import { playerAbilities } from './players/abilities.js';
 import { initializeStage01ObjectSetup } from './stage01ObjectSetup.js';
 import { SymbolPuzzle } from './puzzles/symbolPuzzle/symbolPuzzle.js';
 import { EnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzle.js';
-import { getStage01Hint } from './hints/stage01Hints.js';
+import { getStage01Hint, getStage01Communication } from './hints/stage01Hints.js';
 import { SecurityDrone } from './objects/securityDrone.js';
 
 // Energy relay: the same physical cell must be moved between two sockets.
@@ -37,6 +37,7 @@ export class Stage1 {
     this.health = this.players.map(() => ({ value: 4, max: 4, invulnerable: 0 }));
     this.runTime = this.players.map(() => 0);
     this.keyCarrier = null;
+    this.progress = { hintUnlocked: false };
     this.phase = 'SYMBOLS';
     this.charge = 0;
     this.time = 0;
@@ -44,6 +45,10 @@ export class Stage1 {
     this.helpMarker = null;
     this.message = '';
     this.ping = null;
+  }
+
+  get guardsEnabled() {
+    return stage01Config.enemies.guardsEnabled;
   }
 
   get solids() {
@@ -67,7 +72,8 @@ export class Stage1 {
       const feetBefore = player.y + player.h;
       const wasGrounded = player.grounded;
       const guardTop = this.guardian.topSurface;
-      const canLandOnGuard = this.guardian.active && player.vy >= 0 && feetBefore <= guardTop.y;
+      const canLandOnGuard =
+        this.guardsEnabled && this.guardian.active && player.vy >= 0 && feetBefore <= guardTop.y;
       player.update(
         effectiveInputs[index],
         dt,
@@ -96,13 +102,14 @@ export class Stage1 {
     this.updateRoutes(effectiveInputs, dt);
     this.energyPuzzle.updateCarriedCell();
     this.energyPuzzle.updateCharging(dt, effectiveInputs);
-    this.guardian.update(
-      dt,
-      this.players,
-      ['TRANSFER', 'CHARGE'].includes(this.phase),
-      this.solids,
-      (player) => this.damagePlayer(player),
-    );
+    if (this.guardsEnabled)
+      this.guardian.update(
+        dt,
+        this.players,
+        ['TRANSFER', 'CHARGE'].includes(this.phase),
+        this.solids,
+        (player) => this.damagePlayer(player),
+      );
     if (this.health.some((health) => health.value === 0)) {
       this.reset();
       return;
@@ -178,6 +185,11 @@ export class Stage1 {
   // Preview gebruikt dezelfde voorwaarden zonder de game state te wijzigen
   interact(player, preview = false) {
     if (player.facilityStun > 0) return null;
+    if (this.hintDevice.canActivate(player, this.progress)) {
+      if (preview) return this.hintDevice;
+      this.hintDevice.activate(player, this.progress);
+      return;
+    }
     if (this.phase === 'SYMBOLS') {
       const result = this.symbolPuzzle.interact(player, this.players, preview);
 
@@ -221,7 +233,7 @@ export class Stage1 {
     // De energypuzzel handelt batterij- en socketinteracties af
     const energy = this.energyPuzzle.interact(player, preview);
     if (energy) return energy;
-    return this.guardian.interact(player, preview);
+    return this.guardsEnabled ? this.guardian.interact(player, preview) : null;
   }
 
   damagePlayer(player) {
@@ -241,6 +253,7 @@ export class Stage1 {
   }
 
   requestHint() {
+    if (!this.progress.hintUnlocked) return getStage01Communication(this);
     this.helpMarker = new HelpMarker(getStage01Hint(this));
   }
 

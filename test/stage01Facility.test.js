@@ -1,3 +1,4 @@
+import { stage01Config } from '../src/stages/stage01/stage01Config.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Stage1 } from '../src/stages/stage01/stage01.js';
@@ -6,6 +7,14 @@ import { SecurityDrone } from '../src/stages/stage01/objects/securityDrone.js';
 import { Winch } from '../src/stages/stage01/objects/winch.js';
 
 const make = () => new Stage1([CHARACTERS[0], CHARACTERS[1]], () => 0.6);
+const initialGuardsEnabled = stage01Config.enemies.guardsEnabled;
+// These tests verify enabled guards independently from development defaults.
+test.before(() => {
+  stage01Config.enemies.guardsEnabled = true;
+});
+test.after(() => {
+  stage01Config.enemies.guardsEnabled = initialGuardsEnabled;
+});
 const idle = () => ({ move: 0, jump: false, crouch: false, interact: false, interactHeld: false });
 const tick = (stage, inputs = [idle(), idle()], frames = 1) => {
   for (let i = 0; i < frames; i++) stage.update(1 / 120, inputs);

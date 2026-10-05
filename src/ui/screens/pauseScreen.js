@@ -7,7 +7,7 @@ export function pauseView() {
     heading('TAKE A BREATHER', 'Even uit de sync.', 'De wereld wacht op jullie.') +
     '<div class="pause-grid">' +
     button('resume', '▶ Verder spelen<small>Terug naar jullie verbinding</small>', 'primary') +
-    button('hint', '✦ Vraag een hint<small>Zoek en verzamel een marker in de wereld</small>') +
+    button('hint', '◈ Helperverbinding<small>Praat met de facility-helper</small>') +
     button('controls', 'Controls<small>Keyboard & gamepad</small>') +
     button('controllers', 'Controllerstatus<small>Verbinding en spelerkoppeling</small>') +
     button('restart', 'Stage opnieuw<small>Zet de energiecel terug bij de start</small>') +

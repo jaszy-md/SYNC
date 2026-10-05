@@ -1,3 +1,5 @@
+import { stage01Config } from '../stage01Config.js';
+
 // Only rendering state lives here; all availability checks use the stage's existing guards.
 const animations = new WeakMap();
 
@@ -70,7 +72,19 @@ export function drawStage01ControlHints(ctx, stage, bindings) {
       Math.min(ctx.canvas.width - totalWidth / 2 - 4, object.x + object.w / 2),
     );
     const x = center - totalWidth / 2 + preceding + w / 2;
-    const y = object.y - (stage.chargePads.includes(object) ? 70 : 38);
+    const visuals = stage01Config.interactionVisuals;
+    const access =
+      object === stage.symbolPuzzle.clue || stage.symbolPuzzle.symbolBlocks.includes(object);
+    const top = access
+      ? Math.min(
+          object.y,
+          object.y +
+            object.h -
+            (object.w > 50 ? visuals.terminalSize : visuals.robotSize) * visuals.spriteHeightRatio,
+        )
+      : object.y - (stage.chargePads.includes(object) ? visuals.chargeHintHeight : 0);
+    const floating = reducedMotion ? 0 : Math.sin(stage.time * 2.4) * 2;
+    const y = Math.max(16, top - stage01Config.interactionHintOffsetY + floating);
     const fade = opacity * opacity * (3 - 2 * opacity);
     const pulse = reducedMotion ? 1 : 1 + 0.025 * (1 - Math.cos((stage.time * Math.PI * 2) / 3));
     const scale = (reducedMotion ? 1 : 0.94 + 0.06 * fade) * pulse;
@@ -81,7 +95,7 @@ export function drawStage01ControlHints(ctx, stage, bindings) {
     ctx.fillStyle = '#11172cf5';
     ctx.strokeStyle = player.id === 0 ? '#64e4ffb3' : '#ab8bffb3';
     ctx.lineWidth = 1;
-    ctx.shadowColor = '#090d2080';
+    ctx.shadowColor = '#64e4ff80';
     ctx.shadowBlur = 4;
     ctx.shadowOffsetY = 2;
     ctx.beginPath();

@@ -39,7 +39,7 @@ export function directionalTarget(nodes, current, direction) {
 }
 
 // UI-only navigation lives here; the central GameState still owns play/pause.
-export function createUI({ state, input, selected, start, resume, getStage }) {
+export function createUI({ state, input, selected, start, resume, getStage, onHint }) {
   const screen = document.querySelector('#screen'),
     game = document.querySelector('#game');
   let panel = null,
@@ -98,15 +98,16 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
     clearTimeout(scanTimer);
     input.clear();
     const playing = state.current === State.PLAYING,
-      paused = state.current === State.PAUSED;
-    game.hidden = !playing && !paused;
+      paused = state.current === State.PAUSED,
+      mapping = state.current === State.MAP;
+    game.hidden = !playing && !paused && !mapping;
     document.querySelector('#pause').hidden = !playing;
-    screen.hidden = playing;
+    screen.hidden = playing || mapping;
     screen.className = paused ? 'overlay' : '';
     screen.setAttribute('role', paused ? 'dialog' : 'region');
     if (paused) screen.setAttribute('aria-modal', 'true');
     else screen.removeAttribute('aria-modal');
-    if (playing) {
+    if (playing || mapping) {
       screen.innerHTML = '';
       document.activeElement?.blur();
       return;
@@ -194,6 +195,7 @@ export function createUI({ state, input, selected, start, resume, getStage }) {
     bind('hint', () => {
       getStage().requestHint();
       resume();
+      onHint?.();
     });
     bind('controls', () => open('controls'));
     bind('controllers', () => open('controllers'));

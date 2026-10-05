@@ -1,3 +1,19 @@
+import { stage01Config } from '../stage01Config.js';
+
+// Add investigation prerequisites here before revealing a phase's puzzle hint.
+export const stage01Hints = {
+  SYMBOLS: {
+    investigated: (stage) => stage.symbolPuzzle.clue.state === 'READ',
+    prompt: 'Misschien vertelt de hoge access-terminal je iets. Laat de Explorer die onderzoeken.',
+  },
+};
+
+export function getStage01Communication(stage) {
+  if (!stage.progress.hintUnlocked) return stage01Config.hints.lockedMessage;
+  const hint = stage01Hints[stage.phase];
+  return hint && !hint.investigated(stage) ? hint.prompt : getStage01Hint(stage).text;
+}
+
 export function getStage01Hint(stage) {
   if (stage.phase === 'SYMBOLS')
     return {

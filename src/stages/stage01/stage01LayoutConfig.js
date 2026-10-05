@@ -21,6 +21,7 @@ export const stage01LayoutConfig = {
     key: { x: 146, y: 252 },
     door: { x: 1140, y: 510, width: 52, height: 90 },
     exit: { x: 1100, y: 490, width: 100, height: 110 },
+    hintDevice: { x: 70, y: 264, width: 20, height: 24 },
     cell: { x: 185, y: 572, width: 24, height: 26 },
     sockets: {
       a: { x: 550, y: 561, width: 44, height: 39, label: 'I' },

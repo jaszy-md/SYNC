@@ -1,3 +1,4 @@
+import { HintDevice } from './objects/hintDevice.js';
 import { Platform } from '../../entities/objects/platform.js';
 import { Door } from '../../entities/objects/door.js';
 import { Trigger } from '../../entities/objects/trigger.js';
@@ -21,6 +22,7 @@ export function initializeStage01ObjectSetup(stage) {
   stage.gateA = gate(layout.gates.a, '1');
   stage.gateB = gate(layout.gates.b, '2');
   stage.platforms.push(stage.bridge, stage.gateA, stage.gateB);
+  stage.hintDevice = new HintDevice(layout.objects.hintDevice);
   stage.plate = new PressurePlate(layout.objects.plate.x, layout.objects.plate.y);
   stage.winch = new Winch(layout.objects.winch.x, layout.objects.winch.y);
 

@@ -206,6 +206,7 @@ test('final charge needs two separate contacts and simultaneous sustained intera
 });
 test('only requested world hints reveal text, require entry, and follow progress', () => {
   const s = make();
+  s.progress.hintUnlocked = true;
   assert.equal(s.helpMarker, null);
   assert.equal(s.message, '');
   s.requestHint();

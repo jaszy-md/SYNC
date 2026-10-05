@@ -3,6 +3,7 @@ export const State = Object.freeze({
   SETUP: 'SETUP',
   PLAYING: 'PLAYING',
   PAUSED: 'PAUSED',
+  MAP: 'MAP',
   STAGE_COMPLETE: 'STAGE_COMPLETE',
 });
 export class GameState {

@@ -36,7 +36,7 @@ export function readyView(selected, assignments) {
       )
       .join('') +
     '</div>' +
-    '<div class="connected-controller flow-info"><strong>Praat met elkaar</strong><span>Alleen 2 spelers · Extra hulp vind je tijdens het spelen in Menu → Vraag een hint.</span></div>' +
+    '<div class="connected-controller flow-info"><strong>Praat met elkaar</strong><span>Alleen 2 spelers · Vind Mica’s geheugenmodule in de wereld om contextuele hulp vrij te geven.</span></div>' +
     ('<div class="menu-links">' +
       button('controls', 'Controls bekijken', 'ghost') +
       button('controllers', 'Controllers koppelen', 'ghost') +

@@ -67,6 +67,7 @@ function drawWorldObjects(ctx, stage) {
   drawFacilityStructure(ctx, stage);
   stage.symbolPuzzle.draw(ctx, stage.players);
   stage.key.draw(ctx);
+  stage.hintDevice.draw(ctx, stage.progress, stage.time);
 }
 
 function drawPlayersAndItems(ctx, stage) {
@@ -82,6 +83,7 @@ function drawPlayersAndItems(ctx, stage) {
     ctx.save();
     if (stage.health[player.id].invulnerable > 0 && Math.floor(stage.time * 12) % 2)
       ctx.globalAlpha = 0.4;
+    ctx.globalAlpha *= stage.opening?.playerOpacity ?? 1;
     player.draw(ctx);
     ctx.restore();
   });
@@ -126,7 +128,7 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
   // Tekent de gezamenlijke onderdelen van de energypuzzel
   drawEnergyPuzzle(ctx, stage);
 
-  stage.guardian.draw(ctx);
+  if (stage.guardsEnabled) stage.guardian.draw(ctx);
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
 
@@ -134,6 +136,7 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
   drawStage01ControlHints(ctx, stage, bindings);
 
   drawHealth(ctx, stage);
+  stage.opening?.draw(ctx, stage.players);
 
   if (debug) {
     ctx.strokeStyle = '#ff7493';

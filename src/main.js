@@ -1,3 +1,6 @@
+import { PortalOpening } from './stages/stage01/portalOpening.js';
+import { createFacilityHud } from './ui/facilityHud.js';
+import './ui/facilityHud.css';
 import { State, GameState } from './core/gameState.js';
 import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
@@ -6,7 +9,6 @@ import { createUI } from './ui/ui.js';
 
 const canvas = document.querySelector('canvas'),
   ctx = canvas.getContext('2d');
-const hintToast = document.querySelector('#hint-toast');
 const input = new InputManager(),
   manager = new StageManager();
 const debug = new URLSearchParams(location.search).get('debug') === 'true';
@@ -14,29 +16,53 @@ const selected = [0, 1];
 const FIXED_STEP = 1 / 120;
 let stage,
   accumulator = 0,
-  lastTime = 0,
-  hintSeconds = 0;
-const state = new GameState(() => ui.render());
+  lastTime = 0;
+const state = new GameState(() => {
+  ui.render();
+  hud.sync(state.current);
+});
+const hud = createFacilityHud({ state, getStage: () => stage, returnToWorld });
 function start() {
   input.clear();
   accumulator = 0;
-  hintSeconds = 0;
-  hintToast.hidden = true;
   stage = manager.load(
     1,
     selected.map((i) => CHARACTERS[i]),
   );
+  stage.opening = new PortalOpening();
+  hud.reset();
   ui.resetPanel();
   state.set(State.PLAYING);
 }
 function resume() {
   ui.resetPanel();
   state.set(State.PLAYING);
+  returnToWorld();
 }
-const ui = createUI({ state, input, selected, start, resume, getStage: () => stage });
+function returnToWorld() {
+  canvas.focus({ preventScroll: true });
+  input.clear();
+  input.sample();
+  input.endFrame();
+  accumulator = 0;
+}
+const ui = createUI({
+  state,
+  input,
+  selected,
+  start,
+  resume,
+  getStage: () => stage,
+  onHint: () => hud.requestHint(),
+});
 function pause() {
   if (state.current === State.PLAYING) state.set(State.PAUSED);
 }
+canvas.tabIndex = -1;
+canvas.addEventListener('pointerdown', () => {
+  canvas.focus({ preventScroll: true });
+  input.clear();
+});
 document.querySelector('#pause').addEventListener('click', pause);
 document.querySelector('.brand').addEventListener('click', (event) => {
   event.preventDefault();
@@ -59,8 +85,7 @@ function updateSimulation() {
       stage.update(FIXED_STEP, actions);
       // Only collecting an explicitly requested marker may display text.
       if (requestedHint && !stage.helpMarker) {
-        hintToast.textContent = requestedHint.text;
-        hintSeconds = 10;
+        hud.speak(requestedHint.text);
       }
       accumulator -= FIXED_STEP;
       actions.forEach((a) => {
@@ -78,8 +103,7 @@ function updateSimulation() {
 
 function renderGame(elapsed) {
   stage.draw(ctx, debug, interactionBindings(input.assignments));
-  hintSeconds = Math.max(0, hintSeconds - elapsed);
-  hintToast.hidden = hintSeconds === 0;
+  hud.update(elapsed);
   if (debug) drawDebugOverlay(elapsed);
 }
 
@@ -100,20 +124,48 @@ function drawDebugOverlay(elapsed) {
   ].forEach((line, i) => ctx.fillText(line, 24, 34 + i * 21));
 }
 
+let panelButtonHeld = false;
 function frame(time) {
   const elapsed = Math.min((time - lastTime) / 1000, 0.05);
   lastTime = time;
   const navigation = input.sampleUI();
-  if (state.current === State.PLAYING) {
+  const panelButton = input.pads().some((pad) => pad.buttons[8]?.pressed);
+  if (state.current === State.PLAYING && panelButton && !panelButtonHeld) {
+    if (hud.controlsFocused) returnToWorld();
+    else {
+      hud.focusControls();
+      input.clear();
+    }
+  }
+  panelButtonHeld = panelButton;
+  if (state.current === State.MAP) hud.navigate(navigation);
+  else if (state.current === State.PLAYING) {
     if (navigation.menu) document.querySelector('#pause').click();
   } else ui.navigate(navigation);
   if (input.pressed.has('Escape')) {
-    if (state.current === State.PLAYING) pause();
+    if (state.current === State.MAP) hud.closeMap();
+    else if (state.current === State.PLAYING && hud.controlsFocused) returnToWorld();
+    else if (state.current === State.PLAYING && hud.speechVisible) hud.dismissSpeech();
+    else if (state.current === State.PLAYING) pause();
     else if (!ui.closePanel() && state.current === State.PAUSED) resume();
   }
   if (state.current === State.PLAYING) {
-    accumulator += elapsed;
-    updateSimulation();
+    const controlsFocused = hud.controlsFocused;
+    if (stage.opening?.active) {
+      stage.opening.update(elapsed);
+      accumulator = 0;
+      input.sample();
+      input.endFrame();
+      if (!stage.opening.active) input.clear();
+    } else if (controlsFocused) {
+      hud.navigate(navigation);
+      accumulator = 0;
+      input.sample();
+      input.endFrame();
+    } else {
+      accumulator += elapsed;
+      updateSimulation();
+    }
     renderGame(elapsed);
   } else {
     accumulator = 0;

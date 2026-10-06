@@ -180,8 +180,8 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   assert.equal(s.key.state, 'VISIBLE');
   assert.equal(s.door.state, 'LOCKED');
   assert.equal(s.complete, false);
-  place(a, 1120);
-  place(b, 1150);
+  place(a, 1120, s.portalPlatform.y - a.h);
+  place(b, 1150, s.portalPlatform.y - b.h);
   s.interact(a);
   step(s, both);
   assert.equal(s.complete, false);
@@ -193,14 +193,14 @@ test('final charge needs two separate contacts and simultaneous sustained intera
   s.interact(a);
   assert.equal(s.key.state, 'COLLECTED');
   assert.equal(s.door.state, 'LOCKED');
-  place(a, 1120);
+  place(a, 1120, s.portalPlatform.y - a.h);
   s.interact(a);
   assert.equal(s.door.state, 'UNLOCKED');
-  place(a, 1120);
+  place(a, 1120, s.portalPlatform.y - a.h);
   place(b, 950);
   step(s, both);
   assert.equal(s.complete, false);
-  place(b, 1150);
+  place(b, 1150, s.portalPlatform.y - b.h);
   step(s, both);
   assert.equal(s.complete, true);
 });
@@ -253,12 +253,17 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
       `P${i + 1} reaches x=${x}, actual ${s.players[i].x}`,
     );
   };
-  const jump = (x) => {
-    for (let f = 0; f < 160; f++)
-      s.update(1 / 120, [
-        { ...idle(), jump: f === 0, move: Math.abs(a.x - x) > 2 ? Math.sign(x - a.x) : 0 },
-        idle(),
-      ]);
+  const jump = (x, index = 0) => {
+    const player = s.players[index];
+    for (let f = 0; f < 160; f++) {
+      const actions = [idle(), idle()];
+      actions[index] = {
+        ...idle(),
+        jump: f === 0,
+        move: Math.abs(player.x - x) > 2 ? Math.sign(x - player.x) : 0,
+      };
+      s.update(1 / 120, actions);
+    }
   };
   const useTech = (hold = false) =>
     s.update(1 / 120, [
@@ -334,13 +339,21 @@ test('full energy relay and exit are reachable using real movement, jumping, cro
   assert.equal(s.key.state, 'COLLECTED');
   walk(0, 620);
   walk(0, 800, { crouch: true });
-  walk(0, 1120);
+  walk(0, 1000);
+  jump(1050);
+  assert.equal(a.y + a.h, s.portalStep.y);
+  jump(1140);
+  assert.equal(a.y + a.h, s.portalPlatform.y);
   step(s, [idle(), idle()], 1);
   s.interact(a);
   assert.equal(s.door.state, 'UNLOCKED');
   walk(1, 620);
   walk(1, 800, { crouch: true });
-  walk(1, 1150);
+  walk(1, 1000);
+  jump(1050, 1);
+  assert.equal(s.players[1].y + s.players[1].h, s.portalStep.y);
+  jump(1150, 1);
+  assert.equal(s.players[1].y + s.players[1].h, s.portalPlatform.y);
   step(s, [
     { ...idle(), interactHeld: true },
     { ...idle(), interactHeld: true },

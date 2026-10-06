@@ -13,12 +13,7 @@ export class EnergySocket {
   draw(ctx, cell) {
     const occupied = cell.state === `SOCKET_${this.label === 'I' ? 'A' : 'B'}`;
 
-    machine(
-      ctx,
-      this,
-      this.label === 'I' ? 'CORE / LIFT' : 'CORE / REACTOR',
-      occupied ? 'ONLINE' : 'OFF',
-    );
+    machine(ctx, this, '', occupied ? 'ONLINE' : 'OFF');
 
     // Tekent de batterij in de socket wanneer deze bezet is
     if (occupied) {

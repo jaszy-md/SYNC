@@ -1,67 +1,7 @@
-import { drawFacilityBackground, drawFacilityStructure, machine } from './facilityView.js';
+import { drawFacilityBackground, drawFacilityStructure } from './facilityView.js';
 import { drawStage01ControlHints } from './hints/controlHints.js';
+import { drawPowerNetwork, drawPortalGate } from './powerNetworkView.js';
 import { drawEnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzleView.js';
-
-function drawConnections(ctx, stage) {
-  const powered = stage.cell.state === 'SOCKET_A';
-
-  ctx.lineWidth = 3;
-  ctx.setLineDash([]);
-
-  const wire = (points, active) => {
-    ctx.strokeStyle = active ? '#87d4a2' : '#575649';
-    ctx.beginPath();
-
-    points.forEach(([x, y], index) => {
-      if (index) ctx.lineTo(x, y);
-      else ctx.moveTo(x, y);
-    });
-
-    ctx.stroke();
-  };
-
-  wire(
-    [
-      [stage.plate.x + stage.plate.w / 2, stage.plate.y + stage.plate.h],
-      [312, 493],
-      [450, 493],
-    ],
-    !stage.gateA.active,
-  );
-
-  wire(
-    [
-      [572, 568],
-      [572, 390],
-      [535, 390],
-      [stage.bridge.x + stage.bridge.w / 2, stage.bridge.y],
-    ],
-    powered,
-  );
-
-  wire(
-    [
-      [stage.winch.x + stage.winch.w / 2, stage.winch.y + stage.winch.h],
-      [760, 330],
-      [881, 330],
-      [stage.gateB.x + stage.gateB.w / 2, stage.gateB.y + 5],
-    ],
-    !stage.gateB.active,
-  );
-
-  wire(
-    [
-      [992, 580],
-      [1068, 580],
-      [1068, 480],
-      [1165, 480],
-      [1165, 510],
-    ],
-    ['CHARGE', 'KEY', 'EXIT'].includes(stage.phase),
-  );
-
-  ctx.setLineDash([]);
-}
 
 function drawWorldObjects(ctx, stage) {
   drawFacilityStructure(ctx, stage);
@@ -71,14 +11,7 @@ function drawWorldObjects(ctx, stage) {
 }
 
 function drawPlayersAndItems(ctx, stage) {
-  machine(
-    ctx,
-    stage.door,
-    'EXIT / AUTHORIZATION',
-    stage.door.state === 'LOCKED' ? 'OFF' : 'ONLINE',
-  );
-  ctx.fillStyle = '#68786a';
-  ctx.fillRect(stage.door.x + 25, stage.door.y + 9, 2, 70);
+  drawPortalGate(ctx, stage);
   stage.players.forEach((player) => {
     ctx.save();
     if (stage.health[player.id].invulnerable > 0 && Math.floor(stage.time * 12) % 2)
@@ -122,7 +55,7 @@ function drawAffordances(ctx, stage) {
 
 export function drawStage1(ctx, stage, debug = false, bindings = []) {
   drawFacilityBackground(ctx, stage.time);
-  drawConnections(ctx, stage);
+  drawPowerNetwork(ctx, stage);
   drawWorldObjects(ctx, stage);
 
   // Tekent de gezamenlijke onderdelen van de energypuzzel

@@ -65,6 +65,9 @@ export function initializeStage01ObjectSetup(stage) {
   });
   stage.platforms.push(...stage.returnSteps);
   stage.platforms.push(stage.keyPlatform);
+  stage.portalPlatform = platform(layout.platforms.portal);
+  stage.portalStep = platform(layout.platforms.portalStep);
+  stage.platforms.push(stage.portalPlatform, stage.portalStep);
 
   const { door, exit } = layout.objects;
   stage.door = new Door(door.x, door.y, door.width, door.height);

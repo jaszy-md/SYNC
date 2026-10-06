@@ -4,7 +4,7 @@ import { near } from '../../../../core/physics/collision.js';
 import { symbolPuzzleConfig } from './symbolPuzzleConfig.js';
 import { stage01Image, drawStage01Image } from '../../stage01Assets.js';
 
-function drawTerminal(ctx, rect, symbol, active, label) {
+function drawTerminal(ctx, rect, symbol, active) {
   const isScreen = rect.w > 50;
   const image = stage01Image(isScreen ? 'symbol_screen' : 'symbol_robot');
   ctx.save();
@@ -42,7 +42,7 @@ function drawTerminal(ctx, rect, symbol, active, label) {
       width * (isScreen ? 0.44 : 0.21),
     );
   } else {
-    machine(ctx, rect, label, active ? 'ONLINE' : 'OFF');
+    machine(ctx, rect, '', active ? 'ONLINE' : 'OFF');
     ctx.fillStyle = active ? '#87d4a2' : '#c2b791';
     ctx.font = 'bold 21px monospace';
     ctx.textAlign = 'center';
@@ -64,7 +64,6 @@ export function drawSymbolPuzzle(ctx, puzzle, players) {
     puzzle.clue,
     clueVisible ? puzzle.clue.symbol : '···',
     clueVisible || (reader !== undefined && puzzle.clue.canRead(reader)),
-    'ACCESS / P1',
   );
 
   // Tekent de drie symboolblokken
@@ -78,16 +77,16 @@ export function drawSymbolPuzzle(ctx, puzzle, players) {
           reader &&
           near(reader, puzzle.clue, 25) &&
           players.some((player) => player.abilities.operateSwitch && near(player, block, 14))),
-      'ACCESS',
     );
   });
 
   // Tekent de voortgang van de ingevoerde symboolcode
-  ctx.fillStyle = '#b9afd1';
-  ctx.font = '12px monospace';
-  ctx.fillText(
-    `${puzzle.matchIndex}/${puzzle.code.length}`,
-    symbolPuzzleConfig.progress.x,
-    symbolPuzzleConfig.progress.y,
-  );
+  for (let i = 0; i < puzzle.code.length; i++) {
+    const x = symbolPuzzleConfig.progress.x + i * 12;
+    const y = symbolPuzzleConfig.progress.y - 7;
+    ctx.fillStyle = '#19292b';
+    ctx.fillRect(x, y, 8, 6);
+    ctx.fillStyle = i < puzzle.matchIndex ? '#9af1ce' : '#536368';
+    ctx.fillRect(x + 1, y + 1, 6, 4);
+  }
 }

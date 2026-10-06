@@ -219,7 +219,13 @@ test('robot, held switch and patrol/front sprites render with fallbacks and corr
   }
   stage.draw(ctx);
   assert.equal(drawn.size, 9, 'the first frame reaches every gameplay renderer before assets load');
-  assert.ok(calls.some(([name, label]) => name === 'fillText' && label === 'EXIT / AUTHORIZATION'));
+  assert.ok(
+    !calls.some(([name, label]) => name === 'fillText' && label === 'EXIT / AUTHORIZATION'),
+  );
+  assert.ok(
+    calls.some(([name]) => name === 'ellipse'),
+    'portal arch replaces the door panel',
+  );
   assert.ok(
     calls.some(([name]) => name === 'fillRect'),
     'unavailable assets still render',

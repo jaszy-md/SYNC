@@ -76,14 +76,6 @@ export function drawFacilityBackground(ctx, time) {
     }
   }
 
-  ctx.fillStyle = '#839589';
-  ctx.font = 'bold 28px monospace';
-  ctx.fillText('MERIDIAN / TEST FACILITY', 36, 48);
-
-  ctx.font = '12px monospace';
-  ctx.fillStyle = '#8f9b88';
-  ctx.fillText('SECTOR 01   •   AUXILIARY POWER ONLY   •   EVACUATED', 38, 72);
-
   for (const x of [430, 865, 1145]) {
     ctx.fillStyle = Math.sin(time * 3) > 0 ? '#d7874c' : '#6d4938';
     ctx.fillRect(x, 105, 14, 8);
@@ -179,11 +171,12 @@ export function machine(ctx, rect, label, status = 'OFF') {
 
   ctx.font = 'bold 11px monospace';
 
-  ctx.fillStyle = '#061219';
-  ctx.fillRect(x - 3, y - 19, label.length * 6.7 + 6, 15);
-
-  ctx.fillStyle = '#e0eee0';
-  ctx.fillText(label, x, y - 7);
+  if (label) {
+    ctx.fillStyle = '#061219';
+    ctx.fillRect(x - 3, y - 19, label.length * 6.7 + 6, 15);
+    ctx.fillStyle = '#e0eee0';
+    ctx.fillText(label, x, y - 7);
+  }
 
   ctx.restore();
 }
@@ -231,16 +224,6 @@ export function drawFacilityStructure(ctx, stage) {
     ctx.fillRect(gate.x + 5, gate.y - 6, 12, 4);
   }
 
-  ctx.font = '11px monospace';
-  ctx.fillStyle = '#98a798';
-
-  ctx.fillText('01 / ACCESS ARCHIVE', 210, 485);
-  ctx.fillText('SECURITY VAULT', stage.keyPlatform.x, stage.keyPlatform.y + 42);
-
-  if (stage.returnSteps[0].active) {
-    ctx.fillText('← RETURN CATWALK', 837, 387);
-  }
-
   // Railings are decorative and never alter jump collision.
   for (const p of [stage.keyPlatform, stage.platforms[2]]) {
     ctx.strokeStyle = '#74968b80';
@@ -257,9 +240,6 @@ export function drawFacilityStructure(ctx, stage) {
 
     ctx.stroke();
   }
-
-  ctx.fillText('02 / MAINTENANCE', 645, 348);
-  ctx.fillText('03 / REACTOR', 969, 384);
 
   for (const pad of [stage.plate, ...stage.chargePads]) {
     ctx.fillStyle = '#677369';

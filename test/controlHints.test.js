@@ -211,8 +211,8 @@ test('key, unlock and exit hints follow exact ranges, ownership and completed st
   assert.equal(hints(stage)[0].object, stage.key);
   stage.interact(reader);
   assert.equal(hints(stage).length, 0);
-  place(reader, 1120);
-  place(tech, 1150);
+  place(reader, 1120, stage.portalPlatform.y - reader.h);
+  place(tech, 1150, stage.portalPlatform.y - tech.h);
   assert.deepEqual(
     hints(stage).map((hint) => hint.player.id),
     [0],
@@ -226,7 +226,7 @@ test('key, unlock and exit hints follow exact ranges, ownership and completed st
   );
   place(tech, 900);
   assert.equal(hints(stage).length, 0, 'exit requires both players');
-  place(tech, 1150);
+  place(tech, 1150, stage.portalPlatform.y - tech.h);
   stage.updateExit([{ interactHeld: true }, { interactHeld: true }]);
   assert.equal(stage.complete, true);
   assert.equal(hints(stage).length, 0);

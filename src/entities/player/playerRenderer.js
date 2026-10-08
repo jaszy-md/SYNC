@@ -1,21 +1,48 @@
 import { getCharacterImage } from './characterAssets.js';
 
+export const WALK_FRAME_INTERVAL_MS = 200;
+export const CHARACTER_RENDER_SCALE = 1.2;
+
 export function drawPlayer(player, ctx) {
   const { x, y, w, h } = player;
-  const pose = !player.grounded
-    ? 'jump'
-    : player.crouched
-      ? 'crouch'
-      : Math.abs(player.vx) > 0.1
-        ? 'walk'
-        : 'idle';
+  const pose =
+    player.interactPoseMs > 0
+      ? 'back'
+      : !player.grounded
+        ? 'jump'
+        : player.crouched
+          ? 'crouch'
+          : Math.abs(player.vx) > 0.1
+            ? player.walkElapsedMs < WALK_FRAME_INTERVAL_MS
+              ? 'walkLeft'
+              : 'walkRight'
+            : 'idle';
   const image = getCharacterImage(player.character.sprites[pose]);
-  if (image) ctx.drawImage(image, x, y, w, h);
-  else drawFallbackPlayer(player, ctx);
+  const drawHeight = h * CHARACTER_RENDER_SCALE;
+  const drawY = y + h - drawHeight;
+  if (image) {
+    const drawWidth = drawHeight * (image.naturalWidth / image.naturalHeight);
+    const drawX = x + (w - drawWidth) / 2;
+    ctx.save();
+    // Source sprites face left; mirror only when facing right.
+    if (player.facing > 0) {
+      ctx.translate(drawX + drawWidth, drawY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(image, 0, 0, drawWidth, drawHeight);
+    } else ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(x + w / 2, y + h);
+    ctx.scale(CHARACTER_RENDER_SCALE, CHARACTER_RENDER_SCALE);
+    ctx.translate(-x - w / 2, -y - h);
+    drawFallbackPlayer(player, ctx);
+    ctx.restore();
+  }
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 14px system-ui';
   ctx.textAlign = 'center';
-  ctx.fillText(`P${player.id + 1}`, x + w / 2, y - 12);
+  ctx.fillText(`P${player.id + 1}`, x + w / 2, drawY - 12);
   ctx.textAlign = 'left';
 }
 

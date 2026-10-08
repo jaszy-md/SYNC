@@ -51,6 +51,11 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
     scanTimer,
     deviceDraft = [null, null],
     deviceSessions = new Map();
+  screen.addEventListener('focusin', (event) => {
+    if (event.target.matches('.character-option')) {
+      event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  });
   const refreshAvatars = () => updateCharacterAvatars(screen, refreshAvatars);
   const bind = (id, fn) => document.getElementById(id)?.addEventListener('click', fn);
   // Shrink only when a compact panel still exceeds a short viewport. Transform
@@ -123,6 +128,10 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
     }
     refreshAvatars();
     bind('panel-back', closePanel);
+    screen.querySelector('.character-option[aria-pressed="true"]')?.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+    });
     fitPanel();
     resizeObserver.observe(screen);
     const sheet = screen.querySelector('.sheet');

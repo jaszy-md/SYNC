@@ -3,7 +3,15 @@ import { avatar } from '../components/avatar.js';
 import { heading } from '../components/heading.js';
 import { CHARACTERS } from '../../entities/player/characters.js';
 
-const characterBadges = ['CIRKEL / CYAN', 'VIERKANT / AMBER', 'RUIT / PAARS', 'DRIEHOEK / ROZE'];
+const characterBadges = [
+  'CIRKEL / CYAN',
+  'VIERKANT / AMBER',
+  'RUIT / PAARS',
+  'DRIEHOEK / ROZE',
+  'CIRKEL / GROEN',
+  'VIERKANT / GEEL',
+  'RUIT / BLAUW',
+];
 
 export function characterSelectView(selected, activePlayer) {
   const character = CHARACTERS[selected[activePlayer]];
@@ -34,7 +42,7 @@ export function characterSelectView(selected, activePlayer) {
       .join('') +
     '</div>' +
     '<div class="character-layout">' +
-    ('<div class="character-grid">' +
+    ('<div class="character-list"><div class="character-grid">' +
       CHARACTERS.map(
         (character, j) =>
           '<button class="character-option" id="character-' +
@@ -58,7 +66,7 @@ export function characterSelectView(selected, activePlayer) {
             '</span>') +
           '</button>',
       ).join('') +
-      '</div>') +
+      '</div></div>') +
     '<div class="character-preview">' +
     ('<span class="preview-label">PLAYER ' +
       (activePlayer + 1) +

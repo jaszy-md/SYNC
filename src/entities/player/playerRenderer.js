@@ -1,7 +1,11 @@
 import { getCharacterImage } from './characterAssets.js';
+import {
+  PLAYER_HEIGHT,
+  PLAYER_SPRITE_SCALE,
+  PLAYER_SPRITE_REFERENCE_HEIGHT,
+} from './playerConfig.js';
 
 export const WALK_FRAME_INTERVAL_MS = 200;
-export const CHARACTER_RENDER_SCALE = 1.2;
 
 export function drawPlayer(player, ctx) {
   const { x, y, w, h } = player;
@@ -18,10 +22,14 @@ export function drawPlayer(player, ctx) {
               : 'walkRight'
             : 'idle';
   const image = getCharacterImage(player.character.sprites[pose]);
-  const drawHeight = h * CHARACTER_RENDER_SCALE;
+  // All characters and poses share one source-pixel scale, preserving natural proportions.
+  const spriteScale = (PLAYER_HEIGHT * PLAYER_SPRITE_SCALE) / PLAYER_SPRITE_REFERENCE_HEIGHT;
+  const drawHeight = image
+    ? image.naturalHeight * spriteScale
+    : PLAYER_HEIGHT * PLAYER_SPRITE_SCALE;
   const drawY = y + h - drawHeight;
   if (image) {
-    const drawWidth = drawHeight * (image.naturalWidth / image.naturalHeight);
+    const drawWidth = image.naturalWidth * spriteScale;
     const drawX = x + (w - drawWidth) / 2;
     ctx.save();
     // Source sprites face left; mirror only when facing right.
@@ -34,7 +42,7 @@ export function drawPlayer(player, ctx) {
   } else {
     ctx.save();
     ctx.translate(x + w / 2, y + h);
-    ctx.scale(CHARACTER_RENDER_SCALE, CHARACTER_RENDER_SCALE);
+    ctx.scale(PLAYER_SPRITE_SCALE, PLAYER_SPRITE_SCALE);
     ctx.translate(-x - w / 2, -y - h);
     drawFallbackPlayer(player, ctx);
     ctx.restore();

@@ -28,6 +28,15 @@ export class Stage1 {
     );
 
     initializeStage01ObjectSetup(this);
+    // The opening freezes physics, so establish the supported idle pose at spawn.
+    this.players.forEach((player) => {
+      player.grounded = this.solids.some(
+        (solid) =>
+          Math.abs(player.y + player.h - solid.y) < 0.01 &&
+          player.x + player.w > solid.x &&
+          player.x < solid.x + solid.w,
+      );
+    });
 
     this.symbolPuzzle = new SymbolPuzzle(random);
     this.energyPuzzle = new EnergyPuzzle(this);

@@ -1,5 +1,6 @@
 import { updatePlayerMovement } from './playerMovement.js';
 import { drawPlayer, WALK_FRAME_INTERVAL_MS } from './playerRenderer.js';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from './playerConfig.js';
 export const INTERACT_POSE_DURATION_MS = 250;
 
 export class Player {
@@ -10,8 +11,8 @@ export class Player {
       abilities,
       x: spawn.x,
       y: spawn.y,
-      w: 28,
-      h: 46,
+      w: PLAYER_WIDTH,
+      h: PLAYER_HEIGHT,
       vx: 0,
       vy: 0,
       grounded: false,

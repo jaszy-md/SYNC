@@ -4,6 +4,7 @@ import './ui/facilityHud.css';
 import { State, GameState } from './core/gameState.js';
 import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
+import { preloadCharacterSprites } from './entities/player/characterAssets.js';
 import { StageManager } from './core/stageManager.js';
 import { createUI } from './ui/ui.js';
 
@@ -22,17 +23,25 @@ const state = new GameState(() => {
   hud.sync(state.current);
 });
 const hud = createFacilityHud({ state, getStage: () => stage, returnToWorld });
-function start() {
-  input.clear();
-  accumulator = 0;
-  stage = manager.load(
-    1,
-    selected.map((i) => CHARACTERS[i]),
-  );
-  stage.opening = new PortalOpening();
-  hud.reset();
-  ui.resetPanel();
-  state.set(State.PLAYING);
+let starting = false;
+async function start() {
+  if (starting) return;
+  starting = true;
+  const startingState = state.current;
+  const characters = selected.map((i) => CHARACTERS[i]);
+  try {
+    await preloadCharacterSprites(characters);
+    if (state.current !== startingState) return;
+    input.clear();
+    accumulator = 0;
+    stage = manager.load(1, characters);
+    stage.opening = new PortalOpening();
+    hud.reset();
+    ui.resetPanel();
+    state.set(State.PLAYING);
+  } finally {
+    starting = false;
+  }
 }
 function resume() {
   ui.resetPanel();

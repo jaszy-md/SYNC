@@ -1,3 +1,6 @@
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '../../entities/player/playerConfig.js';
+import { stage01LayoutConfig } from './stage01LayoutConfig.js';
+
 export const stage01Config = {
   width: 1200,
   height: 660,
@@ -14,5 +17,9 @@ export const stage01Config = {
     unlockMessage: 'Geheugenmodule verbonden! Spreek me aan als jullie vastlopen.',
   },
   opening: { duration: 1.5 },
-  spawn: { x: 30, y: 554, spacing: 35 },
+  spawn: {
+    x: 30,
+    y: stage01LayoutConfig.platforms.floor.y - PLAYER_HEIGHT,
+    spacing: PLAYER_WIDTH + 7,
+  },
 };

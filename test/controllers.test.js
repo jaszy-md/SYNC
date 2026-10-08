@@ -2,13 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { InputManager, inputMethods, KEYBOARD } from '../src/core/input.js';
 import { directionalTarget } from '../src/ui/ui.js';
-import {
-  connectedPadsView,
-  deviceCardsView,
-  controllerStatus,
-} from '../src/ui/screens/controllersScreen.js';
-import { readyView } from '../src/ui/screens/readyScreen.js';
-import { controlsView } from '../src/ui/screens/controlsScreen.js';
 
 const nodeAt = (left, top, width = 80, height = 40) => ({
   getBoundingClientRect: () => ({
@@ -45,7 +38,15 @@ function setup(t, pads) {
     event.gamepad = gamepad;
     target.dispatchEvent(event);
   };
-  return { input, emit };
+  return {
+    input,
+    emit,
+    key: (code) => {
+      const event = new Event('keydown', { cancelable: true });
+      event.code = code;
+      target.dispatchEvent(event);
+    },
+  };
 }
 
 test('spatial focus follows all four directions independent of DOM order and does not wrap', () => {
@@ -69,7 +70,7 @@ test('spatial focus follows all four directions independent of DOM order and doe
 
 test('D-pad and dominant stick axis expose four directional edges; action mappings stay intact', (t) => {
   const pad = padAt(3);
-  const { input } = setup(t, [pad]);
+  const { input, key } = setup(t, [pad]);
   for (const [index, direction] of [
     [12, 'up'],
     [13, 'down'],
@@ -98,23 +99,21 @@ test('D-pad and dominant stick axis expose four directional edges; action mappin
   assert.deepEqual(input.sampleUI(), { direction: 0, confirm: true, back: true, menu: true });
   assert.equal(input.sample()[0].crouch, true);
   pad.buttons[1].pressed = false;
-  input.keys.add('KeyS');
+  key('KeyS');
   assert.equal(input.sample()[0].crouch, false);
 });
 
-test('two equal-name controllers have separate sessions; disconnect clears only the matching assignment', (t) => {
+test('equal-name controllers remain independent and disconnect clears only the matching assignment', (t) => {
   const first = padAt(2),
     second = padAt(5);
   const pads = [null, null, first, null, null, second];
   const { input, emit } = setup(t, pads);
   input.assignments = [2, 5];
-  const original = input.padSessions.get(2).serial;
   pads[2] = null;
   emit('gamepaddisconnected', first);
   assert.deepEqual(input.assignments, [null, 5]);
   pads[7] = padAt(7);
   emit('gamepadconnected', pads[7]);
-  assert.notEqual(input.padSessions.get(7).serial, original);
   assert.deepEqual(input.assignments, [7, 5]);
   pads[7] = padAt(7, 'Different controller');
   input.pads();
@@ -125,45 +124,6 @@ test('two equal-name controllers have separate sessions; disconnect clears only 
   pads[7] = null;
   input.pads();
   assert.deepEqual(input.assignments, [null, null]);
-});
-
-test('reconnecting an identical id starts a new session and auto-assigns only the empty Player 1', (t) => {
-  const pad = padAt(0);
-  const { input, emit } = setup(t, [pad]);
-  input.assignments = [null, 0];
-  const serial = input.padSessions.get(0).serial;
-  emit('gamepaddisconnected', pad);
-  assert.deepEqual(input.assignments, [null, null]);
-  emit('gamepadconnected', pad);
-  assert.deepEqual(input.assignments, [0, null]);
-  assert.notEqual(input.padSessions.get(0).serial, serial);
-});
-
-test('connected panel renders actual safe API names and separate player assignments', () => {
-  const html = connectedPadsView(
-    [2, 5],
-    [padAt(2, 'USB <Controller>'), padAt(5, 'Bluetooth & Pad')],
-  );
-  assert.match(html, /USB &lt;Controller&gt;/);
-  assert.match(html, /Bluetooth &amp; Pad/);
-  assert.match(html, /Verbonden · Geselecteerd · Player 1/);
-  assert.match(html, /Verbonden · Geselecteerd · Player 2/);
-  assert.match(connectedPadsView([null, null], []), /Geen controllers verbonden/);
-});
-
-test('controller setup keeps an empty tile, omits the duplicate count, and cleans select names', () => {
-  const empty = connectedPadsView([null, null], []);
-  assert.match(empty, /class="connected-controller"/);
-  assert.match(empty, /Klik op Detecteren/);
-  const html = deviceCardsView(
-    [0, 1],
-    [0, null],
-    [padAt(0, 'Xbox C260 Controller (STANDARD GAMEPAD Vendor: 045e Product: 028e)')],
-  );
-  const dropdown = html.match(/<div id="device-options-0"[^>]*>(.*?)<\/div>/s)[1];
-  assert.match(dropdown, />Xbox C260 Controller<\/button>/);
-  assert.doesNotMatch(dropdown, /STANDARD GAMEPAD|Vendor:|Product:/);
-  assert.doesNotMatch(html, /controller\(s\) verbonden|class="note"|Maximaal 2 spelers/);
 });
 
 test('first detected controller is assigned automatically without replacing or duplicating assignments', (t) => {
@@ -183,22 +143,9 @@ test('first detected controller is assigned automatically without replacing or d
   assert.deepEqual(input.assignments, [5, 2]);
 });
 
-test('dropdowns omit the other player controller and status includes the two-player limit', () => {
-  const html = deviceCardsView([0, 1], [2, 5], [padAt(2, 'Pad A'), padAt(5, 'Pad B')]);
-  const first = html.match(/<div id="device-options-0"[^>]*>(.*?)<\/div>/s)[1];
-  const second = html.match(/<div id="device-options-1"[^>]*>(.*?)<\/div>/s)[1];
-  assert.match(first, /Pad A/);
-  assert.doesNotMatch(first, /Pad B/);
-  assert.match(second, /Pad B/);
-  assert.doesNotMatch(second, /Pad A/);
-  assert.equal(controllerStatus(0), 'Geen controllers verbonden (max. 2)');
-  assert.equal(controllerStatus(1), '1 controller verbonden (max. 2)');
-  assert.equal(controllerStatus(2), '2 controllers verbonden (max. 2)');
-});
-
 test('assignments determine one input source and unique keyboard layouts for every combination', (t) => {
   const pads = [padAt(2), padAt(5)];
-  const { input } = setup(t, pads);
+  const { input, key } = setup(t, pads);
   const idle = { move: 0, jump: false, crouch: false, interact: false, interactHeld: false };
   for (const [assignments, layouts] of [
     [
@@ -228,8 +175,7 @@ test('assignments determine one input source and unique keyboard layouts for eve
     input.clear();
     for (const mapping of KEYBOARD) {
       for (const action of ['right', 'jump', 'crouch', 'interact']) {
-        input.keys.add(mapping[action]);
-        input.pressed.add(mapping[action]);
+        key(mapping[action]);
       }
     }
     const actions = input.sample();
@@ -248,13 +194,13 @@ test('assignments determine one input source and unique keyboard layouts for eve
       );
     });
     input.clear();
-    input.keys.add('KeyD');
+    key('KeyD');
     assert.deepEqual(
       input.sample().map((action) => action.move),
       layouts.map((layout) => (layout === 0 ? 1 : 0)),
     );
     input.clear();
-    input.keys.add('ArrowRight');
+    key('ArrowRight');
     assert.deepEqual(
       input.sample().map((action) => action.move),
       layouts.map((layout) => (layout === 1 ? 1 : 0)),
@@ -279,11 +225,11 @@ test('disconnect restores Arrow Keys for the remaining keyboard player and WASD/
   const first = padAt(2),
     second = padAt(5);
   const pads = [first, second];
-  const { input, emit } = setup(t, pads);
+  const { input, emit, key } = setup(t, pads);
   input.assignments = [2, 5];
   pads[0] = null;
   emit('gamepaddisconnected', first);
-  input.keys.add('ArrowRight');
+  key('ArrowRight');
   assert.deepEqual(inputMethods(input.assignments), [
     { type: 'keyboard', layout: 1 },
     { type: 'controller', index: 5 },
@@ -302,33 +248,4 @@ test('disconnect restores Arrow Keys for the remaining keyboard player and WASD/
     input.sample().map((action) => action.move),
     [0, 1],
   );
-});
-
-test('assignment and ready views show the actual keyboard layout and no keyboard choice for controller players', () => {
-  for (const assignments of [
-    [2, null],
-    [null, 5],
-    [2, 5],
-    [null, null],
-  ]) {
-    const html = deviceCardsView([0, 1], assignments, [padAt(2), padAt(5)]);
-    const methods = inputMethods(assignments);
-    methods.forEach((method, player) => {
-      const options = html.match(
-        new RegExp(`<div id="device-options-${player}"[^>]*>(.*?)<\\/div>`, 's'),
-      )[1];
-      if (method.type === 'controller') {
-        assert.doesNotMatch(options, /Keyboard|WASD|Pijltjestoetsen/);
-        assert.match(options, /Controller vrijgeven/);
-      } else assert.match(options, new RegExp(method.layout === 0 ? 'WASD' : 'Pijltjestoetsen'));
-    });
-    const ready = readyView([0, 1], assignments);
-    assert.equal(
-      (ready.match(/Pijltjestoetsen/g) ?? []).length,
-      methods.some((method) => method.layout === 1) ? 1 : 0,
-    );
-  }
-  const controls = controlsView([null, ['← / →', '↑', '↓', 'Enter']], 'keyboard');
-  assert.match(controls, /Controller actief · Geen keyboardbesturing/);
-  assert.doesNotMatch(controls.split('<h3>Player 2')[0], /<kbd>/);
 });

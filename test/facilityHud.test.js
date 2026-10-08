@@ -31,7 +31,14 @@ function setup(t) {
       setAttribute: (key, value) => attributes.set(key, value),
       getAttribute: (key) => attributes.get(key),
       addEventListener: (event, listener) => listeners.set(event, listener),
-      click: () => listeners.get('click')?.({ currentTarget: element }),
+      click: () => listeners.get('click')?.({ currentTarget: element, target: element }),
+      emit: (event, properties = {}) =>
+        listeners.get(event)?.({
+          target: element,
+          preventDefault() {},
+          stopPropagation() {},
+          ...properties,
+        }),
       focus() {
         document.activeElement = element;
       },
@@ -106,7 +113,7 @@ function setup(t) {
   return { hud, stage, state, nodes, document };
 }
 
-test('controller directions/confirm open map; back closes it and restores playing + Canvas focus', (t) => {
+test('map navigation, Escape and outside clicks close the overlay and restore world focus', (t) => {
   const { hud, state, nodes, document } = setup(t);
   hud.focusControls();
   assert.equal(hud.controlsFocused, true);
@@ -124,6 +131,16 @@ test('controller directions/confirm open map; back closes it and restores playin
   assert.equal(document.activeElement, nodes.get('canvas'));
   assert.equal(hud.controlsFocused, false);
   assert.equal(nodes.get('#map').getAttribute('aria-expanded'), 'false');
+  nodes.get('#map').click();
+  nodes.get('#facility-map').emit('click', { target: nodes.get('#map-image') });
+  assert.equal(state.current, State.MAP, 'map image clicks preserve the overlay');
+  nodes.get('#facility-hud').emit('keydown', { code: 'Escape' });
+  assert.equal(state.current, State.PLAYING);
+  assert.equal(document.activeElement, nodes.get('canvas'));
+  nodes.get('#map').click();
+  nodes.get('#facility-map').click();
+  assert.equal(state.current, State.PLAYING);
+  assert.equal(document.activeElement, nodes.get('canvas'));
 });
 
 test('helper confirm and HUD back return to game without requiring a mouse', (t) => {

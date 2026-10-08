@@ -1,7 +1,13 @@
 import { stage01LayoutConfig } from './stage01LayoutConfig.js';
 
 // Rendering only: circuit states remain owned by the existing puzzles.
-export function drawConduit(ctx, points, active, time) {
+export function drawConduit(
+  ctx,
+  points,
+  active,
+  time,
+  { junctions = true, color = '#58bcae', glow = '#71f4dc' } = {},
+) {
   ctx.save();
   ctx.lineJoin = 'round';
   ctx.lineCap = 'butt';
@@ -39,9 +45,9 @@ export function drawConduit(ctx, points, active, time) {
     }
   }
   if (active) {
-    ctx.strokeStyle = '#58bcae';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
-    ctx.shadowColor = '#71f4dc';
+    ctx.shadowColor = glow;
     ctx.shadowBlur = 6;
     trace();
     ctx.strokeStyle = '#d1fff0';
@@ -52,24 +58,25 @@ export function drawConduit(ctx, points, active, time) {
     ctx.shadowBlur = 0;
     ctx.setLineDash([]);
   }
-  points.forEach(([x, y], i) => {
-    ctx.fillStyle = '#101c20';
-    ctx.fillRect(x - 6, y - 6, 12, 12);
-    ctx.strokeStyle = '#70847d';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - 6, y - 6, 12, 12);
-    ctx.fillStyle = active ? '#9af1ce' : '#555e55';
-    ctx.fillRect(x - 2, y - 2, 4, 4);
-    if (active && i === points.length - 1) {
-      ctx.strokeStyle = '#baf5d9';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x - 3, y);
-      ctx.lineTo(x, y + 3);
-      ctx.lineTo(x + 5, y - 4);
-      ctx.stroke();
-    }
-  });
+  if (junctions)
+    points.forEach(([x, y], i) => {
+      ctx.fillStyle = '#101c20';
+      ctx.fillRect(x - 6, y - 6, 12, 12);
+      ctx.strokeStyle = '#70847d';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 6, y - 6, 12, 12);
+      ctx.fillStyle = active ? '#9af1ce' : '#555e55';
+      ctx.fillRect(x - 2, y - 2, 4, 4);
+      if (active && i === points.length - 1) {
+        ctx.strokeStyle = '#baf5d9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y);
+        ctx.lineTo(x, y + 3);
+        ctx.lineTo(x + 5, y - 4);
+        ctx.stroke();
+      }
+    });
   ctx.restore();
 }
 
@@ -80,6 +87,7 @@ export function drawPowerNetwork(ctx, stage) {
     bridge: stage.bridge.active,
     maintenance: !stage.gateB.active,
     portal: stage.cell.state === 'SOCKET_B',
+    charge: stage.cell.state === 'SOCKET_B',
   };
   for (const [name, points] of Object.entries(routes))
     drawConduit(ctx, points, circuits[name], stage.time);

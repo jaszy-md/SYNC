@@ -74,7 +74,7 @@ test('Mica unlock requires collecting the device and world hints reveal only on 
     const stage = makeStage(),
       player = stage.players[role];
     assert.equal(stage.requestHint(), stage01Config.hints.lockedMessage);
-    assert.equal(stage.helpMarker, null);
+    assert.equal(stage.helpMarker.id, 'memory');
     moveAway(player, stage.hintDevice);
     stage.interact(player);
     assert.equal(stage.progress.hintUnlocked, false);

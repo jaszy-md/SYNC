@@ -4,7 +4,21 @@ import { near } from '../../../../core/physics/collision.js';
 import { symbolPuzzleConfig } from './symbolPuzzleConfig.js';
 import { stage01Image, drawStage01Image } from '../../stage01Assets.js';
 
-function drawTerminal(ctx, rect, symbol, active) {
+function drawSymbols(ctx, symbol, x, y, width, confirmed) {
+  const symbols = symbol.split(' ');
+  const normalColor = ctx.fillStyle;
+  symbols.forEach((value, index) => {
+    ctx.fillStyle = index < confirmed ? '#64ef92' : normalColor;
+    ctx.fillText(
+      index < confirmed ? '✓' : value,
+      x + (index - (symbols.length - 1) / 2) * (width / symbols.length),
+      y,
+      width / symbols.length,
+    );
+  });
+}
+
+function drawTerminal(ctx, rect, symbol, active, confirmed = 0) {
   const isScreen = rect.w > 50;
   const image = stage01Image(isScreen ? 'symbol_screen' : 'symbol_robot');
   ctx.save();
@@ -35,11 +49,13 @@ function drawTerminal(ctx, rect, symbol, active) {
     const scale = Math.min(frame.w / image.naturalWidth, frame.h / image.naturalHeight);
     const width = image.naturalWidth * scale;
     const height = image.naturalHeight * scale;
-    ctx.fillText(
+    drawSymbols(
+      ctx,
       symbol,
       frame.x + (size - width) / 2 + width * (isScreen ? 0.5 : 0.49),
       frame.y + (size - height) / 2 + height * (isScreen ? 0.32 : 0.5),
       width * (isScreen ? 0.44 : 0.21),
+      confirmed,
     );
   } else {
     machine(ctx, rect, '', active ? 'ONLINE' : 'OFF');
@@ -47,7 +63,7 @@ function drawTerminal(ctx, rect, symbol, active) {
     ctx.font = 'bold 21px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(symbol, rect.x + rect.w / 2, rect.y + rect.h / 2);
+    drawSymbols(ctx, symbol, rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.8, confirmed);
   }
   ctx.restore();
 }
@@ -62,8 +78,9 @@ export function drawSymbolPuzzle(ctx, puzzle, players) {
   drawTerminal(
     ctx,
     puzzle.clue,
-    clueVisible ? puzzle.clue.symbol : '···',
+    clueVisible || puzzle.matchIndex > 0 ? puzzle.clue.symbol : '···',
     clueVisible || (reader !== undefined && puzzle.clue.canRead(reader)),
+    puzzle.matchIndex,
   );
 
   // Tekent de drie symboolblokken

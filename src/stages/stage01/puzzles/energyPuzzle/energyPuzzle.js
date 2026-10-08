@@ -22,20 +22,29 @@ export class EnergyPuzzle {
   canCharge() {
     const { stage } = this;
 
-    return stage.phase === 'CHARGE' && stage.chargePads.every((pad) => pad.active);
+    return (
+      stage.phase === 'CHARGE' &&
+      stage.chargePads.every((pad) => pad.active) &&
+      stage.players.some(
+        (left) =>
+          stage.chargePads[0].isPressedBy(left) &&
+          stage.players.some((right) => right !== left && stage.chargePads[1].isPressedBy(right)),
+      )
+    );
   }
 
   updateCharging(dt, inputs) {
     const { stage } = this;
 
-    // Werkt beide laadplaten bij met de bijbehorende speler
-    stage.chargePads.forEach((pad, index) => {
-      pad.update([stage.players[index]]);
+    // Either player may occupy either contact; two distinct occupants are still required.
+    stage.chargePads.forEach((pad) => {
+      pad.update(stage.players);
     });
 
     if (stage.phase !== 'CHARGE') return;
 
-    const bothPlayersCharging = this.canCharge() && inputs.every((input) => input.interactHeld);
+    const bothPlayersCharging =
+      this.canCharge() && stage.players.every((player) => inputs[player.id]?.interactHeld);
 
     stage.charge = bothPlayersCharging
       ? Math.min(energyPuzzleConfig.chargeDuration, stage.charge + dt)
@@ -47,6 +56,7 @@ export class EnergyPuzzle {
     stage.phase = 'KEY';
     stage.key.reveal();
     stage.keyPlatform.active = true;
+    if (stage.guardsEnabled) stage.guardian.spawn(stage.keyPlatform);
   }
 
   interact(player, preview = false) {

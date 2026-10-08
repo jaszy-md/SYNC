@@ -5,7 +5,7 @@ import { StageManager } from '../src/core/stageManager.js';
 import { CHARACTERS } from '../src/entities/player/characters.js';
 import { createUI } from '../src/ui/ui.js';
 import { installUiDom } from '../test-support/uiDom.js';
-function setup(t) {
+function setup(t, onHint) {
   const dom = installUiDom(t),
     manager = new StageManager(),
     selected = [0, 1];
@@ -28,6 +28,7 @@ function setup(t) {
       state.set(State.PLAYING);
     },
     getStage: () => stage,
+    onHint,
   });
   ui.render();
   return {
@@ -46,6 +47,24 @@ function startGame(app) {
   app.click('next');
   app.click('play');
 }
+
+test('menu hint closes the overlay before requesting the module exactly once', (t) => {
+  let app;
+  app = setup(t, () => app.stage.requestHint());
+  startGame(app);
+  const original = app.stage.requestHint.bind(app.stage);
+  let requests = 0;
+  app.stage.requestHint = () => {
+    requests++;
+    assert.equal(app.state.current, State.PLAYING);
+    assert.ok(app.screen.hidden);
+    original();
+  };
+  app.state.set(State.PAUSED);
+  app.click('hint');
+  assert.equal(requests, 1);
+  assert.equal(app.stage.hintDevice.appearedAt, 0);
+});
 
 test('home advances through roles, character selection and team ready before loading Stage 01', (t) => {
   const app = setup(t);

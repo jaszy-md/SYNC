@@ -34,11 +34,13 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     bubble.hidden = false;
   };
   function requestHint() {
+    if (getStage().exitAnimation) return;
+    getStage().requestHint();
     speak(getStage01Communication(getStage()));
     restore();
   }
   function openMap() {
-    if (state.current !== State.PLAYING) return;
+    if (state.current !== State.PLAYING || getStage().exitAnimation) return;
     const icon = map.getBoundingClientRect();
     state.set(State.MAP);
     dialog.showModal();

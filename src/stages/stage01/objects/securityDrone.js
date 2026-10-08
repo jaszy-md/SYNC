@@ -1,4 +1,5 @@
 import { near, overlaps } from '../../../core/physics/collision.js';
+import { moveBody } from '../../../core/physics/movement.js';
 import { stage01Config } from '../stage01Config.js';
 import { stage01LayoutConfig } from '../stage01LayoutConfig.js';
 import { stage01Image, drawStage01Image } from '../stage01Assets.js';
@@ -19,6 +20,7 @@ export class SecurityDrone {
       disabled: 0,
       time: 0,
       active: false,
+      state: 'inactive',
       cooldown: [0, 0],
       projectiles: [],
       shotTimer: 1.8,
@@ -26,9 +28,23 @@ export class SecurityDrone {
       retreat: 0,
       knockDirection: 0,
       moving: false,
+      vx: 0,
+      vy: 0,
+      grounded: true,
       stompRetreat: 0,
       hitFlash: 0,
     });
+  }
+
+  spawn(platform) {
+    if (this.state !== 'inactive') return;
+    this.state = 'entering';
+    this.active = true;
+    this.x = -this.w;
+    this.y = platform.y - this.h;
+    this.entryX = platform.x + this.w;
+    this.direction = 1;
+    this.moving = true;
   }
 
   interact(player, preview = false) {
@@ -50,7 +66,7 @@ export class SecurityDrone {
   }
 
   stomp(player) {
-    if (this.disabled > 0) return;
+    if (!this.active || this.disabled > 0) return;
     this.disabled = 4;
     this.projectiles = [];
     this.shotTimer = 1.8;
@@ -62,15 +78,32 @@ export class SecurityDrone {
   }
 
   update(dt, players, enabled, solids = [], onHit = () => {}) {
-    this.active = enabled;
+    this.active = enabled && this.state !== 'inactive';
     this.time += dt;
     this.disabled = Math.max(0, this.disabled - dt);
     this.hitFlash = Math.max(0, this.hitFlash - dt);
     this.cooldown = this.cooldown.map((value) => Math.max(0, value - dt));
     this.moving = false;
-    if (!enabled) {
+    if (!this.active) {
       this.projectiles = [];
       return;
+    }
+    if (this.state === 'entering') {
+      if (this.disabled > 0) return;
+      this.moving = true;
+      this.direction = 1;
+      this.movePatrol(Math.min(65 * dt, this.entryX - this.x), solids);
+      if (this.x >= this.entryX) this.state = 'chasing';
+      return;
+    }
+    const target = [...players].sort(
+      (a, b) => Math.hypot(a.x - this.x, a.y - this.y) - Math.hypot(b.x - this.x, b.y - this.y),
+    )[0];
+    const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
+    // Reuse world collision and gravity so pursuit cannot float through platforms.
+    for (let step = 0; step < steps; step++) {
+      this.vy = Math.min(1000, this.vy + (1600 * dt) / steps);
+      moveBody(this, dt / steps, solids);
     }
     if (this.stompRetreat > 0) {
       this.moving = true;
@@ -106,6 +139,9 @@ export class SecurityDrone {
     // Keep the original scan pause; a shove temporarily overrides it.
     this.moving = this.retreat > 0 || this.time % 5 >= 1.5;
     if (this.moving) {
+      if (target && this.retreat === 0)
+        this.direction =
+          Math.sign(target.x + target.w / 2 - (this.x + this.w / 2)) || this.direction;
       this.movePatrol(this.direction * 65 * dt, solids);
     }
     this.shotTimer -= dt;
@@ -120,7 +156,7 @@ export class SecurityDrone {
 
   movePatrol(distance, solids) {
     const { patrolMin, patrolMax } = stage01LayoutConfig.objects.guard;
-    const left = Math.max(0, patrolMin);
+    const left = this.state === 'entering' ? -this.w : Math.max(0, patrolMin);
     const right = Math.min(stage01Config.width - this.w, patrolMax);
     let nextX = Math.max(left, Math.min(right, this.x + distance));
     for (const solid of solids) {
@@ -131,15 +167,37 @@ export class SecurityDrone {
       else if (distance < 0 && this.x >= solid.x + solid.w && nextX < solid.x + solid.w)
         nextX = Math.max(nextX, solid.x + solid.w);
       else if (overlaps(this, solid)) {
-        // A gate can close over a guard: move him to the nearest side, never through it.
-        nextX = this.x + this.w / 2 < solid.x + solid.w / 2 ? solid.x - this.w : solid.x + solid.w;
+        this.resolveWall(solid, solids);
+        nextX = this.x;
       }
     }
     if (nextX !== this.x + distance && !this.stagger) this.direction *= -1;
     this.x = Math.max(left, Math.min(right, nextX));
   }
 
+  resolveWall(wall, solids) {
+    if (!overlaps(this, wall)) return;
+    const onLeft = this.x + this.w / 2 < wall.x + wall.w / 2;
+    const candidates = [
+      0,
+      stage01Config.width - this.w,
+      ...solids.flatMap((solid) => [solid.x - this.w - 0.01, solid.x + solid.w + 0.01]),
+    ];
+    const safeX = candidates
+      .filter(
+        (x) =>
+          x >= 0 &&
+          x + this.w <= stage01Config.width &&
+          (onLeft ? x + this.w <= wall.x : x >= wall.x + wall.w) &&
+          !solids.some((solid) => overlaps({ ...this, x }, solid)),
+      )
+      .sort((a, b) => Math.abs(a - this.x) - Math.abs(b - this.x))[0];
+    if (safeX !== undefined) this.x = safeX;
+    this.vx = 0;
+  }
+
   fire(player) {
+    if (!this.active || this.state !== 'chasing' || this.disabled > 0) return;
     const x = this.x + this.w / 2,
       y = this.y + 15;
     const dx = player.x + player.w / 2 - x;
@@ -181,6 +239,7 @@ export class SecurityDrone {
   }
 
   draw(ctx) {
+    if (!this.active) return;
     const image = stage01Image(this.moving ? 'guard_side' : 'guard_front');
     ctx.save();
     if (this.hitFlash > 0 && Math.floor(this.hitFlash * 16) % 2) {
@@ -190,8 +249,6 @@ export class SecurityDrone {
     }
     const color =
       this.stagger > 0 ? '#ffe3a1' : !this.active || this.disabled > 0 ? '#76bda0' : '#edac62';
-    ctx.fillStyle = '#050c1399';
-    ctx.fillRect(this.x - 4, this.y + this.h - 3, this.w + 8, 7);
     if (image) {
       drawStage01Image(
         ctx,

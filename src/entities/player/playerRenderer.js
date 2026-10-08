@@ -47,11 +47,6 @@ export function drawPlayer(player, ctx) {
     drawFallbackPlayer(player, ctx);
     ctx.restore();
   }
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 14px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText(`P${player.id + 1}`, x + w / 2, drawY - 12);
-  ctx.textAlign = 'left';
 }
 
 function drawFallbackPlayer(player, ctx) {

@@ -144,9 +144,14 @@ test('map navigation, Escape and outside clicks close the overlay and restore wo
 });
 
 test('helper confirm and HUD back return to game without requiring a mouse', (t) => {
-  const { hud, nodes, document, state } = setup(t);
+  const { hud, nodes, document, state, stage } = setup(t);
+  assert.equal(stage.hintDevice.appearedAt, null);
   hud.focusControls();
   hud.navigate({ confirm: true });
+  assert.equal(stage.hintDevice.appearedAt, 0);
+  stage.time = 1;
+  nodes.get('#helper').click();
+  assert.equal(stage.hintDevice.appearedAt, 0);
   assert.match(nodes.get('#helper-announcement').textContent, /geheugenmodule/);
   assert.equal(state.current, State.PLAYING);
   assert.equal(document.activeElement, nodes.get('canvas'));

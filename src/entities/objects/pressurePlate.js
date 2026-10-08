@@ -6,14 +6,16 @@ export class PressurePlate extends Trigger {
     this.active = false;
   }
   update(players) {
-    this.active = players.some(
-      (p) =>
-        p.grounded &&
-        p.x + p.w > this.x &&
-        p.x < this.x + this.w &&
-        Math.abs(p.y + p.h - (this.y + this.h)) < 4,
-    );
+    this.active = players.some((player) => this.isPressedBy(player));
     return this.active;
+  }
+  isPressedBy(player) {
+    return (
+      player.grounded &&
+      player.x + player.w > this.x &&
+      player.x < this.x + this.w &&
+      Math.abs(player.y + player.h - (this.y + this.h)) < 4
+    );
   }
   draw(ctx) {
     ctx.fillStyle = this.active ? '#64e4ff' : '#ab8bff';

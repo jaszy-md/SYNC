@@ -58,16 +58,17 @@ export function initializeStage01ObjectSetup(stage) {
   stage.key = new Key(layout.objects.key.x, layout.objects.key.y);
   stage.keyPlatform = platform(layout.platforms.key);
   stage.keyPlatform.active = true;
-  // Powered return stair folds out after charging, forming an upper loop.
-  stage.returnSteps = layout.platforms.returnSteps.map(platform);
-  stage.returnSteps.forEach((p) => {
-    p.active = false;
-  });
-  stage.platforms.push(...stage.returnSteps);
+  // Exit steps have no rendering or collision until the portal is unlocked.
   stage.platforms.push(stage.keyPlatform);
   stage.portalPlatform = platform(layout.platforms.portal);
   stage.portalStep = platform(layout.platforms.portalStep);
-  stage.platforms.push(stage.portalPlatform, stage.portalStep);
+  stage.portalApproach = platform(layout.platforms.portalApproach);
+  stage.portalFinalStep = platform(layout.platforms.portalFinalStep);
+  stage.exitSteps = [stage.portalStep, stage.portalApproach, stage.portalFinalStep];
+  stage.exitSteps.forEach((step) => {
+    step.active = false;
+  });
+  stage.platforms.push(stage.portalPlatform, ...stage.exitSteps);
 
   const { door, exit } = layout.objects;
   stage.door = new Door(door.x, door.y, door.width, door.height);

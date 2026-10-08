@@ -202,9 +202,9 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
     screen.innerHTML = pauseView();
     bind('resume', resume);
     bind('hint', () => {
-      getStage().requestHint();
       resume();
-      onHint?.();
+      if (onHint) onHint();
+      else getStage().requestHint();
     });
     bind('controls', () => open('controls'));
     bind('controllers', () => open('controllers'));

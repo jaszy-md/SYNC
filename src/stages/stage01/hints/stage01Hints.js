@@ -15,6 +15,13 @@ export function getStage01Communication(stage) {
 }
 
 export function getStage01Hint(stage) {
+  if (!stage.progress.hintUnlocked)
+    return {
+      id: 'memory',
+      x: stage.hintDevice.x,
+      y: stage.hintDevice.y,
+      text: stage01Config.hints.lockedMessage,
+    };
   if (stage.phase === 'SYMBOLS')
     return {
       id: 'symbols',
@@ -48,7 +55,7 @@ export function getStage01Hint(stage) {
       id: 'charge',
       x: 1017,
       y: 559,
-      text: 'P1 op het linker contact, P2 rechts. Houd samen interactie vast tot de batterij opgeladen is. De sleutel komt dan vrij op het hoge platform links.',
+      text: 'Ga ieder op een van de twee contacten staan. Links of rechts maakt niet uit. Houd samen interactie vast tot de batterij opgeladen is. De sleutel komt dan vrij op het platform links.',
     };
   if (stage.phase === 'KEY')
     return {
@@ -59,8 +66,8 @@ export function getStage01Hint(stage) {
     };
   return {
     id: 'exit',
-    x: 1135,
-    y: 559,
+    x: stage.door.x,
+    y: stage.door.y + stage.door.h - 32,
     text: 'De Explorer draagt de sleutel: gebruik interactie bij de deur om te ontgrendelen. Kom daarna allebei bij de uitgang en houd samen interactie vast.',
   };
 }

@@ -28,22 +28,25 @@ test('PressurePlate activates for grounded contact and releases when contact is 
   moveAway(player, plate);
   assert.equal(plate.update([player]), false);
 });
-test('Gate opens from the Explorer plate and cannot close through a player', () => {
+test('Gate opens from either player on the plate and closes by ejecting an occupying player once', () => {
   const stage = makeStage(),
     [explorer, tech] = stage.players;
   placeAt(tech, stage.plate);
   stage.updateRoutes([idle(), idle()]);
-  assert.ok(stage.gateA.active, 'Tech cannot open gate');
+  assert.equal(stage.gateA.active, false, 'Tech can also operate the floor plate');
   placeAt(explorer, stage.plate);
   stage.updateRoutes([idle(), idle()]);
   assert.equal(stage.gateA.active, false);
   moveAway(explorer, stage.plate);
   placeAt(tech, stage.gateA);
   stage.updateRoutes([idle(), idle()]);
-  assert.equal(stage.gateA.active, false, 'occupied gate remains open');
+  assert.equal(stage.gateA.active, true, 'occupied gate closes');
+  assert.equal(overlaps(tech, stage.gateA), false);
+  assert.equal(stage.health[tech.id].value, 3);
   moveAway(tech, stage.gateA);
   stage.updateRoutes([idle(), idle()]);
   assert.ok(stage.gateA.active);
+  assert.equal(stage.health[tech.id].value, 3, 'one closure inflicts only one hit');
 });
 test('Winch requires the Explorer in range holding interaction during transfer', () => {
   const stage = makeStage(),
@@ -88,7 +91,7 @@ test('symbol controls require the correct roles, a read clue and a present reade
   assert.equal(stage.cell.state, 'CAGED');
   assert.equal(stage.phase, 'SYMBOLS');
 });
-test('a wrong symbol resets partial progress and permits a successful retry', () => {
+test('a wrong symbol preserves confirmed progress and permits a successful retry', () => {
   const stage = makeStage(),
     [explorer, tech] = stage.players,
     puzzle = stage.symbolPuzzle;
@@ -105,8 +108,8 @@ test('a wrong symbol resets partial progress and permits a successful retry', ()
     puzzle.symbolBlocks.find((block) => !puzzle.code.includes(block.symbol)),
   );
   stage.interact(tech);
-  assert.equal(puzzle.matchIndex, 0);
-  assert.ok(puzzle.symbolBlocks.every((block) => block.state === 'OFF'));
+  assert.equal(puzzle.matchIndex, 1);
+  assert.equal(puzzle.symbolBlocks.filter((block) => block.state === 'ON').length, 1);
   assert.equal(stage.phase, 'SYMBOLS');
   solveSymbols(stage);
   assert.equal(stage.phase, 'ENTRY');
@@ -257,9 +260,13 @@ test('Door unlock needs its key carrier and exit Trigger requires both players i
   stage.updateExit([{ interactHeld: true }, idle()]);
   assert.equal(stage.complete, false);
   stage.updateExit([{ interactHeld: true }, { interactHeld: true }]);
-  assert.ok(stage.complete);
+  assert.equal(stage.complete, false);
+  const animation = stage.exitAnimation;
+  assert.ok(animation);
   assert.equal(stage.door.state, 'OPEN');
   stage.updateExit([{ interactHeld: true }, { interactHeld: true }]);
+  assert.equal(stage.exitAnimation, animation, 'exit animation starts exactly once');
+  stage.update(stage01Config.exitAnimation.duration, [idle(), idle()]);
   assert.ok(stage.complete);
 });
 test('both roles can climb the current raised portal route and finish the energy relay', (t) => {
@@ -270,6 +277,10 @@ test('both roles can climb the current raised portal route and finish the energy
   });
   const stage = makeStage();
   collectKey(stage);
+  // Only the Explorer can unlock the elevated portal before the steps appear.
+  placeAt(stage.players[0], stage.door);
+  stage.interact(stage.players[0]);
+  stage.updateRoutes([idle(), idle()]);
   const floor = stage.platforms.find((p) => p.y === Math.max(...stage.platforms.map((s) => s.y)));
   function jumpTo(player, target) {
     for (let frame = 0; frame < 160; frame++) {
@@ -289,10 +300,20 @@ test('both roles can climb the current raised portal route and finish the energy
       vy: 0,
       grounded: true,
     });
-    jumpTo(player, stage.portalStep.x + stage.portalStep.w / 3);
+    jumpTo(player, stage.portalStep.x + 4);
     assert.ok(
       player.grounded && player.y + player.h === stage.portalStep.y,
       'role lands on the step',
+    );
+    jumpTo(player, stage.portalApproach.x + 4);
+    assert.ok(
+      player.grounded && player.y + player.h === stage.portalApproach.y,
+      'role lands on the extra approach bar',
+    );
+    jumpTo(player, stage.portalFinalStep.x + 2);
+    assert.ok(
+      player.grounded && player.y + player.h === stage.portalFinalStep.y,
+      'role lands on the final step',
     );
     jumpTo(player, stage.door.x + (player.id ? player.w / 2 : 0));
     assert.ok(
@@ -302,6 +323,8 @@ test('both roles can climb the current raised portal route and finish the energy
   }
   stage.interact(stage.players[0]);
   stage.updateExit([{ interactHeld: true }, { interactHeld: true }]);
+  assert.equal(stage.complete, false);
+  stage.update(stage01Config.exitAnimation.duration, [idle(), idle()]);
   assert.equal(stage.complete, true);
 });
 test('stage reset restores progression, entities and hint lock while preserving character choices', () => {

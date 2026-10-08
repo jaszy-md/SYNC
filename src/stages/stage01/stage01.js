@@ -51,6 +51,8 @@ export class Stage1 {
     this.charge = 0;
     this.time = 0;
     this.complete = false;
+    this.exitAnimation = null;
+    this.hintRequested = false;
     this.helpMarker = null;
     this.message = '';
     this.ping = null;
@@ -67,7 +69,19 @@ export class Stage1 {
   }
 
   update(dt, inputs) {
+    if (this.complete) return;
     this.time += dt;
+    if (this.exitAnimation) {
+      this.exitAnimation.elapsed = Math.min(
+        stage01Config.exitAnimation.duration,
+        this.exitAnimation.elapsed + dt,
+      );
+      this.players.forEach((player) => {
+        player.interactPoseMs = 250;
+      });
+      if (this.exitAnimation.elapsed >= stage01Config.exitAnimation.duration) this.complete = true;
+      return;
+    }
     const effectiveInputs = inputs.map((input, index) => {
       const player = this.players[index];
       player.facilityStun = Math.max(0, (player.facilityStun || 0) - dt);
@@ -112,12 +126,8 @@ export class Stage1 {
     this.energyPuzzle.updateCarriedCell();
     this.energyPuzzle.updateCharging(dt, effectiveInputs);
     if (this.guardsEnabled)
-      this.guardian.update(
-        dt,
-        this.players,
-        ['TRANSFER', 'CHARGE'].includes(this.phase),
-        this.solids,
-        (player) => this.damagePlayer(player),
+      this.guardian.update(dt, this.players, this.guardsEnabled, this.solids, (player) =>
+        this.damagePlayer(player),
       );
     if (this.health.some((health) => health.value === 0)) {
       this.reset();
@@ -130,20 +140,19 @@ export class Stage1 {
   updateRoutes(inputs, dt = 1 / 120) {
     const explorer = this.players.find((player) => player.abilities.operateWinch);
 
-    this.plate.update([explorer]);
+    this.plate.update(this.players);
 
-    const transferred = ['TRANSFER', 'CHARGE', 'KEY', 'EXIT'].includes(this.phase);
     const delivered = ['CHARGE', 'KEY', 'EXIT'].includes(this.phase);
 
     this.winch.active = this.canOperateWinch(explorer) && inputs[explorer.id].interactHeld;
 
-    this.setGate(this.gateA, transferred || this.plate.active);
+    this.setGate(this.gateA, this.plate.active);
     this.setGate(this.gateB, delivered || this.winch.active);
 
     // De batterij in socket A activeert de brug
     this.bridge.active = this.cell.state === 'SOCKET_A' || ['KEY', 'EXIT'].includes(this.phase);
-    this.returnSteps.forEach((p) => {
-      p.active = ['KEY', 'EXIT'].includes(this.phase);
+    this.exitSteps.forEach((p) => {
+      p.active = this.phase === 'EXIT' && this.door.state !== 'LOCKED';
     });
     for (const gate of [this.gateA, this.gateB])
       gate.slide = Math.max(0, Math.min(1, (gate.slide ?? 0) + (gate.active ? -1 : 1) * dt * 3));
@@ -162,8 +171,20 @@ export class Stage1 {
   }
 
   updateExit(inputs) {
+    if (this.exitAnimation || this.complete) return;
     if (this.canExit() && this.door.open(this.players, inputs)) {
-      this.complete = true;
+      this.exitAnimation = {
+        elapsed: 0,
+        starts: this.players.map((player) => ({
+          x: player.x + player.w / 2,
+          y: player.y + player.h,
+        })),
+      };
+      this.players.forEach((player) => {
+        player.vx = 0;
+        player.vy = 0;
+        player.interactPoseMs = 250;
+      });
     }
   }
 
@@ -187,12 +208,41 @@ export class Stage1 {
   }
 
   setGate(gate, open) {
-    // Sluit een sluis nooit door een speler heen
-    gate.active = !open && !this.players.some((player) => overlaps(player, gate));
+    if (open) {
+      gate.active = false;
+      return;
+    }
+    if (gate.active) return;
+    gate.active = true;
+    if (this.guardsEnabled && this.guardian.active) this.guardian.resolveWall(gate, this.solids);
+    for (const player of this.players) {
+      if (!overlaps(player, gate)) continue;
+      const solids = this.solids;
+      // Search horizontal obstacle edges at the same height; never move through the floor.
+      const candidates = [
+        0,
+        stage01Config.width - player.w,
+        ...solids.flatMap((solid) => [solid.x - player.w - 0.01, solid.x + solid.w + 0.01]),
+      ];
+      const safeX = candidates
+        .filter(
+          (x) =>
+            x >= 0 &&
+            x + player.w <= stage01Config.width &&
+            !solids.some((solid) => overlaps({ ...player, x }, solid)),
+        )
+        .sort((a, b) => Math.abs(a - player.x) - Math.abs(b - player.x))[0];
+      if (safeX !== undefined) {
+        player.x = safeX;
+        player.vx = 0;
+      }
+      this.damagePlayer(player);
+    }
   }
 
   // Preview gebruikt dezelfde voorwaarden zonder de game state te wijzigen
   interact(player, preview = false) {
+    if (this.exitAnimation || this.complete) return null;
     if (player.facilityStun > 0) return null;
     if (this.hintDevice.canActivate(player, this.progress)) {
       if (preview) return this.hintDevice;
@@ -250,6 +300,7 @@ export class Stage1 {
     if (health.invulnerable > 0) return;
     health.value = Math.max(0, health.value - 1);
     health.invulnerable = 1.2;
+    player.damageFlashUntil = this.time + 0.4;
   }
 
   reset() {
@@ -262,8 +313,11 @@ export class Stage1 {
   }
 
   requestHint() {
-    if (!this.progress.hintUnlocked) return getStage01Communication(this);
+    if (this.exitAnimation || this.complete) return;
+    this.hintRequested = true;
+    this.hintDevice.reveal(this.time);
     this.helpMarker = new HelpMarker(getStage01Hint(this));
+    if (!this.progress.hintUnlocked) return getStage01Communication(this);
   }
 
   draw(ctx, debug = false, bindings = []) {

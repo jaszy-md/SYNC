@@ -65,7 +65,7 @@ const ui = createUI({
   onHint: () => hud.requestHint(),
 });
 function pause() {
-  if (state.current === State.PLAYING) state.set(State.PAUSED);
+  if (state.current === State.PLAYING && !stage.exitAnimation) state.set(State.PAUSED);
 }
 canvas.tabIndex = -1;
 canvas.addEventListener('pointerdown', () => {
@@ -125,7 +125,8 @@ function drawDebugOverlay(elapsed) {
     `FPS ${Math.round(1 / (elapsed || 1))} | ${state.current} | gamepads ${input.pads().length}`,
     stage.players
       .map(
-        (p) => `P${p.id + 1}: ${p.x.toFixed(0)},${p.y.toFixed(0)} ${p.grounded ? 'ground' : 'air'}`,
+        (p) =>
+          `${p.character.name}: ${p.x.toFixed(0)},${p.y.toFixed(0)} ${p.grounded ? 'ground' : 'air'}`,
       )
       .join(' | '),
     `phase ${stage.phase} | cell ${stage.cell.state} | charge ${stage.charge.toFixed(1)} | door ${stage.door.state}`,
@@ -139,7 +140,7 @@ function frame(time) {
   lastTime = time;
   const navigation = input.sampleUI();
   const panelButton = input.pads().some((pad) => pad.buttons[8]?.pressed);
-  if (state.current === State.PLAYING && panelButton && !panelButtonHeld) {
+  if (state.current === State.PLAYING && !stage.exitAnimation && panelButton && !panelButtonHeld) {
     if (hud.controlsFocused) returnToWorld();
     else {
       hud.focusControls();
@@ -149,9 +150,9 @@ function frame(time) {
   panelButtonHeld = panelButton;
   if (state.current === State.MAP) hud.navigate(navigation);
   else if (state.current === State.PLAYING) {
-    if (navigation.menu) document.querySelector('#pause').click();
+    if (navigation.menu && !stage.exitAnimation) document.querySelector('#pause').click();
   } else ui.navigate(navigation);
-  if (input.pressed.has('Escape')) {
+  if (input.pressed.has('Escape') && !(state.current === State.PLAYING && stage?.exitAnimation)) {
     if (state.current === State.MAP) hud.closeMap();
     else if (state.current === State.PLAYING && hud.controlsFocused) returnToWorld();
     else if (state.current === State.PLAYING && hud.speechVisible) hud.dismissSpeech();
@@ -159,7 +160,7 @@ function frame(time) {
     else if (!ui.closePanel() && state.current === State.PAUSED) resume();
   }
   if (state.current === State.PLAYING) {
-    const controlsFocused = hud.controlsFocused;
+    const controlsFocused = !stage.exitAnimation && hud.controlsFocused;
     if (stage.opening?.active) {
       stage.opening.update(elapsed);
       accumulator = 0;

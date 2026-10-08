@@ -4,7 +4,7 @@ import { stage01LayoutConfig } from './stage01LayoutConfig.js';
 export const stage01Config = {
   width: 1200,
   height: 660,
-  enemies: { guardsEnabled: false },
+  enemies: { guardsEnabled: true },
   interactionHintOffsetY: 30,
   interactionVisuals: {
     robotSize: 86,
@@ -17,6 +17,7 @@ export const stage01Config = {
     unlockMessage: 'Geheugenmodule verbonden! Spreek me aan als jullie vastlopen.',
   },
   opening: { duration: 1.5 },
+  exitAnimation: { duration: 1.25 },
   spawn: {
     x: 30,
     y: stage01LayoutConfig.platforms.floor.y - PLAYER_HEIGHT,

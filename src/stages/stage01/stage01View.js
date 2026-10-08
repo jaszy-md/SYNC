@@ -2,6 +2,7 @@ import { drawFacilityBackground, drawFacilityStructure } from './facilityView.js
 import { drawStage01ControlHints } from './hints/controlHints.js';
 import { drawPowerNetwork, drawPortalGate } from './powerNetworkView.js';
 import { drawEnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzleView.js';
+import { stage01Config } from './stage01Config.js';
 
 function drawWorldObjects(ctx, stage) {
   drawFacilityStructure(ctx, stage);
@@ -17,6 +18,21 @@ function drawPlayersAndItems(ctx, stage) {
     if (stage.health[player.id].invulnerable > 0 && Math.floor(stage.time * 12) % 2)
       ctx.globalAlpha = 0.4;
     ctx.globalAlpha *= stage.opening?.playerOpacity ?? 1;
+    if (stage.exitAnimation) {
+      const t = stage.exitAnimation.elapsed / stage01Config.exitAnimation.duration;
+      const progress = t * t * (3 - 2 * t);
+      const start = stage.exitAnimation.starts[player.id];
+      const center = { x: stage.door.x + stage.door.w / 2, y: stage.door.y + stage.door.h / 2 };
+      ctx.globalAlpha *= 1 - progress;
+      ctx.translate(
+        start.x + (center.x - start.x) * progress,
+        start.y + (center.y - start.y) * progress,
+      );
+      ctx.scale(1 - progress * 0.85, 1 - progress * 0.85);
+      ctx.translate(-start.x, -start.y);
+    } else if (player.damageFlashUntil > stage.time && Math.floor(stage.time * 20) % 2 === 0) {
+      ctx.filter = 'sepia(1) saturate(8) hue-rotate(320deg)';
+    }
     player.draw(ctx);
     ctx.restore();
   });
@@ -41,11 +57,6 @@ function drawPlayersAndItems(ctx, stage) {
 }
 
 function drawAffordances(ctx, stage) {
-  // Kleine lokale aanwijzingen zonder grote uitlegblokken
-  ctx.fillStyle = '#b9afd1';
-  ctx.font = '12px monospace';
-  ctx.fillText('P1 ↓', stage.plate.x + 14, stage.plate.y - 12);
-
   if (stage.ping && stage.ping.until > stage.time) {
     ctx.fillStyle = '#f379d0';
     ctx.font = 'bold 24px monospace';
@@ -65,7 +76,6 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
 
-  stage.helpMarker?.draw(ctx, stage.time);
   drawStage01ControlHints(ctx, stage, bindings);
 
   drawHealth(ctx, stage);
@@ -95,8 +105,6 @@ function drawHealth(ctx, stage) {
     ctx.fillStyle = '#0b1725e6';
     ctx.fillRect(x, 14, 154, 30);
     ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = index === 0 ? '#64e4ff' : '#ab8bff';
-    ctx.fillText(`P${index + 1}`, x + 9, 34);
     for (let pip = 0; pip < health.max; pip++) {
       ctx.fillStyle =
         pip < health.value ? (health.invulnerable > 0 ? '#ffbe79' : '#a9dfd5') : '#33434e';

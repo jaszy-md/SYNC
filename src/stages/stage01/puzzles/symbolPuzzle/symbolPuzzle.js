@@ -68,6 +68,7 @@ export class SymbolPuzzle {
     }
 
     if (preview) return targetBlock;
+    if (targetBlock.state === 'ON') return 'HANDLED';
 
     const expectedSymbol = this.code[this.matchIndex];
 
@@ -83,13 +84,7 @@ export class SymbolPuzzle {
       return 'HANDLED';
     }
 
-    // Reset de puzzel na een verkeerde symboolkeuze
-    this.matchIndex = 0;
-
-    this.symbolBlocks.forEach((symbolBlock) => {
-      symbolBlock.state = 'OFF';
-    });
-
+    // Een fout behoudt de al bevestigde symbolen en bestaande voortgang.
     this.ping = {
       x: targetBlock.x + 12,
       y: targetBlock.y - 15,

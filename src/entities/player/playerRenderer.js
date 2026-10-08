@@ -7,20 +7,30 @@ import {
 
 export const WALK_FRAME_INTERVAL_MS = 200;
 
+export function getPlayerSpriteBounds(player, pose = 'walkLeft') {
+  const image = getCharacterImage(player.character.sprites[pose]);
+  const scale = (PLAYER_HEIGHT * PLAYER_SPRITE_SCALE) / PLAYER_SPRITE_REFERENCE_HEIGHT;
+  const w = image ? image.naturalWidth * scale : player.w * PLAYER_SPRITE_SCALE;
+  const h = image ? image.naturalHeight * scale : PLAYER_HEIGHT * PLAYER_SPRITE_SCALE;
+  return { x: player.x + (player.w - w) / 2, y: player.y + player.h - h, w, h };
+}
+
 export function drawPlayer(player, ctx) {
   const { x, y, w, h } = player;
   const pose =
-    player.interactPoseMs > 0
-      ? 'back'
-      : !player.grounded
-        ? 'jump'
-        : player.crouched
-          ? 'crouch'
-          : Math.abs(player.vx) > 0.1
-            ? player.walkElapsedMs < WALK_FRAME_INTERVAL_MS
-              ? 'walkLeft'
-              : 'walkRight'
-            : 'idle';
+    player.shootPoseMs > 0
+      ? 'walkLeft'
+      : player.interactPoseMs > 0
+        ? 'back'
+        : !player.grounded
+          ? 'jump'
+          : player.crouched
+            ? 'crouch'
+            : Math.abs(player.vx) > 0.1
+              ? player.walkElapsedMs < WALK_FRAME_INTERVAL_MS
+                ? 'walkLeft'
+                : 'walkRight'
+              : 'idle';
   const image = getCharacterImage(player.character.sprites[pose]);
   // All characters and poses share one source-pixel scale, preserving natural proportions.
   const spriteScale = (PLAYER_HEIGHT * PLAYER_SPRITE_SCALE) / PLAYER_SPRITE_REFERENCE_HEIGHT;

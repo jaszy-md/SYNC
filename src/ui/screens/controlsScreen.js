@@ -36,7 +36,7 @@ export function controlsView(rows, controlsTab) {
                       (key, j) =>
                         '<div class="control-row">' +
                         ('<span>' +
-                          ['Bewegen', 'Springen', 'Bukken', 'Interactie'][j] +
+                          ['Bewegen', 'Springen', 'Bukken', 'Interactie', 'Schieten (met gun)'][j] +
                           '</span>') +
                         ('<kbd>' + key + '</kbd>') +
                         '</div>',
@@ -49,8 +49,8 @@ export function controlsView(rows, controlsTab) {
       '</div>') +
     ('<div class="connected-controller flow-info"><strong>Bediening & pauze</strong><span>' +
       (controlsTab === 'keyboard'
-        ? 'Pauze via de Menu-knop of Esc. Bij de uitgang: samen E + Enter vasthouden.'
-        : 'Gamepad: A = springen, B = bukken, X = interactie, Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug. Iedere speler gebruikt één invoerapparaat.') +
+        ? 'Pauze via de Menu-knop of Esc. Energy Blaster: WASD = F, pijltjes = rechter Ctrl. Bij de uitgang: samen E + Enter vasthouden.'
+        : 'Gamepad: A = springen, B = bukken, X/□/Y = interactie. Met gun: X/□/Y of RT/R2/ZR = schieten en LB/L1/L = interactie. Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug.') +
       '</span></div>') +
     ('<div class="actions">' + back() + button('save-controls', 'Opslaan', 'primary') + '</div>') +
     '</div>'

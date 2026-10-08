@@ -35,10 +35,10 @@ export function getCharacterImage(path, onLoad) {
 
 export function preloadCharacterSprites(characters) {
   const paths = new Set(characters.flatMap((character) => Object.values(character.sprites)));
-  return Promise.all(
-    [...paths].map((path) => {
-      getCharacterImage(path);
-      return images.get(path)?.ready ?? Promise.resolve(null);
-    }),
-  );
+  return Promise.all([...paths].map(preloadImage));
+}
+
+export function preloadImage(path) {
+  getCharacterImage(path);
+  return images.get(path)?.ready ?? Promise.resolve(null);
 }

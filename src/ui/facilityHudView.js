@@ -14,11 +14,13 @@ export function helperCharacterView() {
 
 export function facilityHudView() {
   return (
+    '<span id="gem-flight" class="gem-flight" aria-hidden="true" hidden>◆</span>' +
     '<nav id="game-controls" aria-label="Facility HUD">' +
     '<div class="helper-station"><button id="helper" class="hud-object" aria-label="Praat met Mica, de hint-helper" title="Praat met Mica">' +
     helperCharacterView() +
     '<span class="helper-label" aria-hidden="true">HINT</span></button><i class="hud-link" aria-hidden="true"></i></div>' +
     '<span class="hud-cable" aria-hidden="true"></span>' +
+    '<div class="hidden-gems" role="group" aria-label="Hidden Gems"><span id="gem-blue" class="gem-slot blue" role="img" aria-label="Blue Gem: niet verzameld">◇</span><span id="gem-green" class="gem-slot green" role="img" aria-label="Green Gem: niet verzameld">◇</span><span id="gem-gold" class="gem-slot gold" role="img" aria-label="Gold Gem: niet verzameld">◇</span></div>' +
     '<span class="hud-navigation" aria-hidden="true">TAB / VIEW · ESC / B</span>' +
     '<div class="hud-tools"><button id="map" class="hud-object map-object" aria-label="Open de Escape Chain-wereldkaart" aria-haspopup="dialog" aria-expanded="false" title="Escape Chain-wereldkaart">' +
     '<span class="map-icon-fallback" aria-hidden="true"><svg viewBox="0 0 56 56"><path fill="#a7ab94" stroke="#4f5951" stroke-width="2" d="m8 15 13-4 13 4 14-4v30l-14 4-13-4-13 4z"/><path stroke="#687769" fill="none" d="M21 11v30m13-26v30M12 33l13-9 10 8 9-12"/><circle cx="25" cy="24" r="3" fill="#344d4d"/></svg></span><img class="hud-map-image" alt="" hidden /></button>' +

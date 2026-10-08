@@ -41,14 +41,14 @@ export function getStage01Hint(stage) {
       id: 'climb',
       x: stage.winch.x,
       y: stage.winch.y,
-      text: 'Explorer: spring via de gevoede brug naar dit vaste platform. Ga naar de lier rechts en houd interactie vast. Tech kan de cel nu weer meenemen; de brug verdwijnt.',
+      text: 'Explorer: spring via de gevoede brug naar dit vaste platform. Zet met interactie de schakelaar rechts aan. Tech kan de cel nu weer meenemen; de brug verdwijnt.',
     };
   if (stage.phase === 'TRANSFER')
     return {
       id: 'transfer',
       x: 798,
       y: 562,
-      text: 'Explorer: houd de lier vast om sluis 2 open te houden. Tech: kruip met de cel onder de balk door en zet hem in aansluiting II rechts. Laat de lier pas los wanneer je partner erdoor is.',
+      text: 'Explorer: zet de schakelaar aan om sluis 2 te openen. Tech: kruip met de cel onder de balk door en zet hem in aansluiting II rechts. Een volgende interactie met de schakelaar sluit de sluis weer.',
     };
   if (stage.phase === 'CHARGE')
     return {

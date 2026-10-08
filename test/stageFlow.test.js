@@ -48,24 +48,32 @@ test('Gate opens from either player on the plate and closes by ejecting an occup
   assert.ok(stage.gateA.active);
   assert.equal(stage.health[tech.id].value, 3, 'one closure inflicts only one hit');
 });
-test('Winch requires the Explorer in range holding interaction during transfer', () => {
+test('Winch toggles on interaction edges and retains state after release and delivery', () => {
   const stage = makeStage(),
     [explorer, tech] = stage.players;
   placeAt(explorer, stage.winch);
-  stage.updateRoutes([{ interactHeld: true }, idle()]);
+  stage.updateRoutes([{ interact: true }, idle()]);
   assert.equal(stage.winch.active, false);
   dockFirst(stage);
   moveAway(explorer, stage.winch);
   placeAt(tech, stage.winch);
-  stage.updateRoutes([idle(), { interactHeld: true }]);
+  stage.updateRoutes([idle(), { interact: true }]);
   assert.equal(stage.winch.active, false);
   placeAt(explorer, stage.winch);
   moveAway(tech, stage.gateB);
-  stage.updateRoutes([{ interactHeld: true }, idle()]);
+  stage.updateRoutes([{ interact: true }, idle()]);
   assert.ok(stage.winch.active);
   assert.equal(stage.gateB.active, false);
   stage.updateRoutes([idle(), idle()]);
+  assert.ok(stage.winch.active);
+  assert.equal(stage.gateB.active, false);
+  stage.phase = 'CHARGE';
+  stage.updateRoutes([{ interactHeld: true }, idle()]);
+  assert.ok(stage.winch.active);
+  stage.updateRoutes([{ interact: true }, idle()]);
   assert.equal(stage.winch.active, false);
+  assert.ok(stage.gateB.active);
+  stage.updateRoutes([idle(), idle()]);
   assert.ok(stage.gateB.active);
 });
 test('symbol controls require the correct roles, a read clue and a present reader', () => {
@@ -111,6 +119,37 @@ test('a wrong symbol preserves confirmed progress and permits a successful retry
   assert.equal(puzzle.matchIndex, 1);
   assert.equal(puzzle.symbolBlocks.filter((block) => block.state === 'ON').length, 1);
   assert.equal(stage.phase, 'SYMBOLS');
+  assert.ok(puzzle.ping);
+  assert.equal(puzzle.ping.block.state, 'OFF');
+  assert.equal(stage.ping, null, 'symbol errors no longer trigger the cross overlay');
+  const draw = () => {
+    const colors = [];
+    const text = [];
+    const ctx = new Proxy(
+      {
+        createLinearGradient() {
+          return { addColorStop() {} };
+        },
+        fillRect() {
+          colors.push(this.fillStyle);
+        },
+        fillText(value) {
+          text.push(value);
+        },
+      },
+      { get: (target, key) => target[key] ?? (() => {}) },
+    );
+    puzzle.draw(ctx, stage.players);
+    assert.ok(text.includes('✓'), 'confirmed symbol remains a green check');
+    assert.ok(!text.includes('×') && !text.includes('X'));
+    return colors;
+  };
+  assert.ok(draw().includes('#b8263a'));
+  puzzle.update(0.3);
+  assert.ok(puzzle.ping);
+  puzzle.update(0.31);
+  assert.equal(puzzle.ping, null);
+  assert.ok(!draw().includes('#b8263a'));
   solveSymbols(stage);
   assert.equal(stage.phase, 'ENTRY');
 });
@@ -280,6 +319,8 @@ test('both roles can climb the current raised portal route and finish the energy
   // Only the Explorer can unlock the elevated portal before the steps appear.
   placeAt(stage.players[0], stage.door);
   stage.interact(stage.players[0]);
+  // Approach the portal after opening the shifted maintenance passage.
+  stage.winch.active = true;
   stage.updateRoutes([idle(), idle()]);
   const floor = stage.platforms.find((p) => p.y === Math.max(...stage.platforms.map((s) => s.y)));
   function jumpTo(player, target) {

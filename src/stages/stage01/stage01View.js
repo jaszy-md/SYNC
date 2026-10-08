@@ -72,9 +72,10 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
   // Tekent de gezamenlijke onderdelen van de energypuzzel
   drawEnergyPuzzle(ctx, stage);
 
-  if (stage.guardsEnabled) stage.guardian.draw(ctx);
+  if (stage.guardsEnabled) stage.guards.forEach((guard) => guard.draw(ctx));
   drawPlayersAndItems(ctx, stage);
   drawAffordances(ctx, stage);
+  stage.blaster.draw(ctx);
 
   drawStage01ControlHints(ctx, stage, bindings);
 

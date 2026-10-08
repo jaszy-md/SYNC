@@ -4,13 +4,21 @@ import './ui/facilityHud.css';
 import { State, GameState } from './core/gameState.js';
 import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
-import { preloadCharacterSprites } from './entities/player/characterAssets.js';
+import { preloadCharacterSprites, preloadImage } from './entities/player/characterAssets.js';
+import { BLASTER_GUN_SPRITE } from './stages/stage01/stage01CombatConfig.js';
 import { StageManager } from './core/stageManager.js';
 import { createUI } from './ui/ui.js';
 
 const canvas = document.querySelector('canvas'),
   ctx = canvas.getContext('2d');
-const input = new InputManager(),
+const input = new InputManager(
+    window,
+    () =>
+      state.current === State.PLAYING &&
+      !hud.controlsFocused &&
+      !stage?.opening?.active &&
+      !stage?.exitAnimation,
+  ),
   manager = new StageManager();
 const debug = new URLSearchParams(location.search).get('debug') === 'true';
 const selected = [0, 1];
@@ -19,6 +27,7 @@ let stage,
   accumulator = 0,
   lastTime = 0;
 const state = new GameState(() => {
+  input.clear();
   ui.render();
   hud.sync(state.current);
 });
@@ -30,11 +39,11 @@ async function start() {
   const startingState = state.current;
   const characters = selected.map((i) => CHARACTERS[i]);
   try {
-    await preloadCharacterSprites(characters);
+    await Promise.all([preloadCharacterSprites(characters), preloadImage(BLASTER_GUN_SPRITE)]);
     if (state.current !== startingState) return;
     input.clear();
     accumulator = 0;
-    stage = manager.load(1, characters);
+    stage = manager.newRun(1, characters);
     stage.opening = new PortalOpening();
     hud.reset();
     ui.resetPanel();
@@ -51,7 +60,7 @@ function resume() {
 function returnToWorld() {
   canvas.focus({ preventScroll: true });
   input.clear();
-  input.sample();
+  input.sample(stage?.blaster.owner);
   input.endFrame();
   accumulator = 0;
 }
@@ -88,7 +97,10 @@ document.addEventListener('visibilitychange', () => {
 function updateSimulation() {
   // Fixed substeps keep AABB collision stable; button edges are consumed once.
   if (accumulator >= FIXED_STEP) {
-    const actions = input.sample();
+    const actions = input.sample(stage.blaster.owner);
+    stage.players.forEach((player) => {
+      player.inputMethod = input.methodFor(player.id);
+    });
     while (accumulator >= FIXED_STEP) {
       const requestedHint = stage.helpMarker;
       stage.update(FIXED_STEP, actions);
@@ -100,6 +112,7 @@ function updateSimulation() {
       actions.forEach((a) => {
         a.jump = false;
         a.interact = false;
+        a.shoot = false;
       });
       if (stage.complete) {
         state.set(State.STAGE_COMPLETE);
@@ -111,7 +124,11 @@ function updateSimulation() {
 }
 
 function renderGame(elapsed) {
-  stage.draw(ctx, debug, interactionBindings(input.assignments));
+  stage.draw(
+    ctx,
+    debug,
+    interactionBindings(input.assignments, stage.blaster.owner, input.padSessions),
+  );
   hud.update(elapsed);
   if (debug) drawDebugOverlay(elapsed);
 }
@@ -164,13 +181,13 @@ function frame(time) {
     if (stage.opening?.active) {
       stage.opening.update(elapsed);
       accumulator = 0;
-      input.sample();
+      input.sample(stage.blaster.owner);
       input.endFrame();
       if (!stage.opening.active) input.clear();
     } else if (controlsFocused) {
       hud.navigate(navigation);
       accumulator = 0;
-      input.sample();
+      input.sample(stage.blaster.owner);
       input.endFrame();
     } else {
       accumulator += elapsed;

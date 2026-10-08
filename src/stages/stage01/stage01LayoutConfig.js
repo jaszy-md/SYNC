@@ -1,4 +1,5 @@
 // World pixels (1200 × 660). Keep controls on top of their supporting platform.
+const RIGHT_CONSTRUCTION_OFFSET_X = 20;
 export const stage01LayoutConfig = {
   platforms: {
     floor: {
@@ -14,7 +15,7 @@ export const stage01LayoutConfig = {
       height: 20,
     },
     maintenance: {
-      x: 675,
+      x: 675 + RIGHT_CONSTRUCTION_OFFSET_X,
       y: 293,
       width: 175,
       height: 20,
@@ -64,19 +65,20 @@ export const stage01LayoutConfig = {
       height: 162,
     },
     b: {
-      x: 870,
+      x: 870 + RIGHT_CONSTRUCTION_OFFSET_X,
       y: 338,
       width: 22,
       height: 262,
     },
   },
   objects: {
+    blaster: { x: 805, y: 600 }, // y is the ground/feet position; width lives in combat config.
     plate: {
       x: 336,
       y: 430,
     },
     winch: {
-      x: 770,
+      x: 770 + RIGHT_CONSTRUCTION_OFFSET_X,
       y: 251,
     },
     key: {
@@ -179,10 +181,10 @@ export const stage01LayoutConfig = {
       [535, 358],
     ],
     maintenance: [
-      [788, 293],
-      [788, 330],
-      [881, 330],
-      [881, 343],
+      [788 + RIGHT_CONSTRUCTION_OFFSET_X, 293],
+      [788 + RIGHT_CONSTRUCTION_OFFSET_X, 330],
+      [881 + RIGHT_CONSTRUCTION_OFFSET_X, 330],
+      [881 + RIGHT_CONSTRUCTION_OFFSET_X, 343],
     ],
     portal: [
       [992, 580],

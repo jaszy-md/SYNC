@@ -86,8 +86,8 @@ export class SymbolPuzzle {
 
     // Een fout behoudt de al bevestigde symbolen en bestaande voortgang.
     this.ping = {
-      x: targetBlock.x + 12,
-      y: targetBlock.y - 15,
+      block: targetBlock,
+      remaining: symbolPuzzleConfig.errorGlowDuration,
     };
 
     return 'WRONG';
@@ -95,5 +95,11 @@ export class SymbolPuzzle {
 
   draw(ctx, players) {
     drawSymbolPuzzle(ctx, this, players);
+  }
+
+  update(dt) {
+    if (!this.ping) return;
+    this.ping.remaining -= dt;
+    if (this.ping.remaining <= 0) this.ping = null;
   }
 }

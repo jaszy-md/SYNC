@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { InputManager, inputMethods, KEYBOARD } from '../src/core/input.js';
+import {
+  InputManager,
+  inputMethods,
+  KEYBOARD,
+  interactionBindings,
+  shootInstruction,
+} from '../src/core/input.js';
 import { directionalTarget } from '../src/ui/ui.js';
 
 const nodeAt = (left, top, width = 80, height = 40) => ({
@@ -49,6 +55,41 @@ function setup(t, pads) {
   };
 }
 
+test('gameplay keys prevent browser defaults, ignore menus/text entry and clear on blur', (t) => {
+  setup(t, []);
+  let active = true;
+  const keyEvent = (code, element, type = 'keydown') => {
+    const event = new Event(type, { cancelable: true });
+    event.code = code;
+    if (element) Object.defineProperty(event, 'target', { value: element });
+    return event;
+  };
+  const target = new EventTarget();
+  const guarded = new InputManager(target, () => active);
+  for (const code of ['ControlRight', 'KeyF', 'ArrowDown', 'Enter']) {
+    const event = keyEvent(code, { tagName: 'BUTTON' });
+    target.dispatchEvent(event);
+    assert.ok(event.defaultPrevented);
+  }
+  assert.ok(guarded.sample(1)[1].shoot);
+  active = false;
+  assert.equal(guarded.sample(1)[1].shoot, false);
+  const menuKey = keyEvent('ControlRight');
+  target.dispatchEvent(menuKey);
+  assert.equal(menuKey.defaultPrevented, false);
+  active = true;
+  for (const element of [{ tagName: 'TEXTAREA' }, { isContentEditable: true }]) {
+    const event = keyEvent('KeyF', element);
+    target.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, false);
+    assert.equal(guarded.sample(0)[0].shoot, false);
+  }
+  target.dispatchEvent(keyEvent('ControlRight'));
+  target.dispatchEvent(new Event('blur'));
+  assert.equal(guarded.keys.size, 0);
+  assert.equal(guarded.sample(1)[1].shoot, false);
+});
+
 test('spatial focus follows all four directions independent of DOM order and does not wrap', () => {
   const a = nodeAt(0, 0),
     b = nodeAt(100, 0),
@@ -66,6 +107,90 @@ test('spatial focus follows all four directions independent of DOM order and doe
   const below = nodeAt(0, 200),
     diagonal = nodeAt(100, 80);
   assert.equal(directionalTarget([a, diagonal, below], a, 'down'), below);
+});
+
+test('armed keyboard layout uses right Ctrl while unarmed controller retains west interaction', (t) => {
+  const pads = [padAt(2)];
+  const { input, key } = setup(t, pads);
+  input.assignments = [2, null];
+  key('ShiftRight');
+  key('ShiftLeft');
+  key('ControlLeft');
+  assert.equal(input.sample(1)[1].shoot, false);
+  input.endFrame();
+  pads[0].buttons[2].pressed = true;
+  key('KeyF');
+  key('Enter');
+  assert.equal(input.sample(1)[1].shoot, false, 'F is not the arrow-layout shoot key');
+  input.endFrame();
+  key('ControlRight');
+  const actions = input.sample(1);
+  assert.equal(actions[0].shoot, false);
+  assert.ok(actions[0].interactHeld);
+  assert.ok(actions[1].shoot);
+  assert.ok(actions[1].interactHeld);
+  input.endFrame();
+  assert.ok(
+    input.sample(1).every((action) => !action.shoot && !action.interact && action.interactHeld),
+  );
+});
+
+test('WASD uses F and shoot ownership follows the sampled owner instead of a fixed player index', (t) => {
+  const { input, key } = setup(t, []);
+  key('KeyF');
+  key('ControlRight');
+  const actions = input.sample(0);
+  assert.equal(actions[0].shoot, true);
+  assert.equal(actions[1].shoot, false);
+  input.endFrame();
+  assert.equal(input.sample(0)[0].shoot, false);
+});
+
+test('armed west/analog trigger share shoot, LB interacts and pickup press never also shoots', (t) => {
+  const pads = [padAt(2, 'Xbox Controller')];
+  const { input } = setup(t, pads);
+  input.assignments = [null, 2];
+  pads[0].buttons[2].pressed = true;
+  const pickup = input.sample();
+  assert.equal(pickup[1].interact, true);
+  assert.equal(pickup[1].shoot, false);
+  assert.equal(input.sample(1)[1].shoot, false, 'held pickup button is not a new shot');
+  pads[0].buttons[2].pressed = false;
+  input.sample(1);
+  pads[0].buttons[2].pressed = true;
+  pads[0].buttons[7].value = 0.7;
+  const shoot = input.sample(1)[1];
+  assert.equal(shoot.shoot, true);
+  assert.equal(shoot.interact, false);
+  assert.equal(shoot.interactHeld, false);
+  assert.equal(input.sample(1)[1].shoot, false);
+  pads[0].buttons[4].pressed = true;
+  assert.equal(input.sample(1)[1].interact, true);
+  assert.equal(interactionBindings(input.assignments, 1, input.padSessions)[1].label, 'LB');
+  pads[0].buttons[7].value = 0.1;
+  input.sample(1);
+  pads[0].buttons[7].value = 0.6;
+  assert.equal(input.sample(1)[1].shoot, true, 'analog threshold produces shoot edge');
+});
+
+test('controller families label pickup instructions and armed interaction hints correctly', () => {
+  for (const [id, shoot, interact] of [
+    ['Xbox Wireless Controller', 'X of RT', 'LB'],
+    ['Sony DualSense (Vendor: 054c)', '□ of R2', 'L1'],
+    ['Nintendo Switch Pro (Vendor: 057e)', 'Y of ZR', 'L'],
+    ['Unknown controller', 'X-knop of rechter trigger', 'LB'],
+  ]) {
+    assert.equal(
+      shootInstruction({ type: 'controller', controllerId: id }),
+      `Oh ja! Met ${shoot} kan ik schieten!`,
+    );
+    assert.equal(interactionBindings([null, 2], 1, new Map([[2, { id }]]))[1].label, interact);
+  }
+  assert.equal(shootInstruction({ type: 'keyboard', layout: 0 }), 'Oh ja! Met F kan ik schieten!');
+  assert.equal(
+    shootInstruction({ type: 'keyboard', layout: 1 }),
+    'Oh ja! Met Ctrl kan ik schieten!',
+  );
 });
 
 test('D-pad and dominant stick axis expose four directional edges; action mappings stay intact', (t) => {
@@ -146,7 +271,14 @@ test('first detected controller is assigned automatically without replacing or d
 test('assignments determine one input source and unique keyboard layouts for every combination', (t) => {
   const pads = [padAt(2), padAt(5)];
   const { input, key } = setup(t, pads);
-  const idle = { move: 0, jump: false, crouch: false, interact: false, interactHeld: false };
+  const idle = {
+    move: 0,
+    jump: false,
+    crouch: false,
+    interact: false,
+    interactHeld: false,
+    shoot: false,
+  };
   for (const [assignments, layouts] of [
     [
       [null, null],
@@ -190,6 +322,7 @@ test('assignments determine one input source and unique keyboard layouts for eve
               crouch: true,
               interact: true,
               interactHeld: true,
+              shoot: false,
             },
       );
     });
@@ -217,6 +350,7 @@ test('assignments determine one input source and unique keyboard layouts for eve
     crouch: true,
     interact: true,
     interactHeld: true,
+    shoot: false,
   });
   assert.deepEqual(actions[1], idle);
 });

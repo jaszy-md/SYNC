@@ -1,4 +1,56 @@
 /* Physical HUD objects: no coloured button panels. */
+.hidden-gems {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.gem-slot {
+  font: 25px monospace;
+  opacity: 0.3;
+}
+.gem-slot.blue,
+.gem-flight {
+  color: #64d8ff;
+}
+.gem-slot.green {
+  color: #74e99e;
+}
+.gem-slot.gold {
+  color: #efcb6c;
+}
+.gem-slot.collected {
+  opacity: 1;
+  text-shadow: 0 0 8px currentColor;
+}
+.gem-slot.collected {
+  animation: gem-arrival 0.45s ease-out;
+}
+.gem-flight {
+  position: fixed;
+  z-index: 20;
+  pointer-events: none;
+  font: 24px monospace;
+  text-shadow: 0 0 10px #64d8ff;
+  transform: translate(-50%, -50%);
+}
+.gem-flight[hidden] {
+  display: none;
+}
+@keyframes gem-arrival {
+  from {
+    filter: brightness(2.5);
+    transform: scale(1.3);
+  }
+  to {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gem-slot.collected {
+    animation: none;
+  }
+}
 #content {
   container-type: size;
 }
@@ -332,6 +384,7 @@
     gap: 8px;
   }
   .hud-navigation {
+    display: none;
     font-size: 8px;
     letter-spacing: 0;
   }

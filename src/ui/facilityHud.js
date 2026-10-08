@@ -4,11 +4,39 @@ import { stage01Config } from '../stages/stage01/stage01Config.js';
 import { facilityHudConfig } from './facilityHudConfig.js';
 import { facilityHudView } from './facilityHudView.js';
 import { HelperSpeech } from './helperSpeech.js';
+import { GEM_FLIGHT_DURATION } from '../stages/stage01/stage01CombatConfig.js';
 
 export function createFacilityHud({ state, getStage, returnToWorld }) {
   const root = document.querySelector('#facility-hud');
   root.innerHTML = facilityHudView();
   const canvas = document.querySelector('canvas');
+  const gemFlight = root.querySelector('#gem-flight');
+  const gemSlots = ['blue', 'green', 'gold'].map((color) => ({
+    color,
+    node: root.querySelector(`#gem-${color}`),
+  }));
+  function updateGems(stage) {
+    const gem = stage.blaster.gem;
+    gemSlots.forEach(({ color, node }) => {
+      const collected = stage.session.gems[color];
+      node.classList.toggle('collected', collected);
+      node.textContent = collected ? '◆' : '◇';
+      node.setAttribute(
+        'aria-label',
+        `${color} Gem: ${collected ? 'verzameld' : 'niet verzameld'}`,
+      );
+    });
+    gemFlight.hidden = state.current !== State.PLAYING || gem.state !== 'flying';
+    if (gemFlight.hidden) return;
+    const rect = canvas.getBoundingClientRect();
+    const slot = gemSlots[0].node.getBoundingClientRect();
+    const startX = rect.left + ((gem.x + gem.w / 2) * rect.width) / stage01Config.width;
+    const startY = rect.top + ((gem.y + gem.h / 2) * rect.height) / stage01Config.height;
+    const t = Math.min(1, gem.elapsed / GEM_FLIGHT_DURATION);
+    const eased = t * t * (3 - 2 * t);
+    gemFlight.style.left = `${startX + (slot.left + slot.width / 2 - startX) * eased}px`;
+    gemFlight.style.top = `${startY + (slot.top + slot.height / 2 - startY) * eased - Math.sin(t * Math.PI) * 35}px`;
+  }
   const fitHud = () => {
     root.style.width = canvas.getBoundingClientRect().width + 'px';
   };
@@ -165,12 +193,14 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
       helper.focus({ preventScroll: true });
     },
     reset() {
+      gemFlight.hidden = true;
       speech.dismiss();
       bubble.hidden = true;
       previousStage = getStage();
       previouslyUnlocked = false;
     },
     sync(current) {
+      if (current !== State.PLAYING) gemFlight.hidden = true;
       if (current !== State.MAP && dialog.open) {
         dialog.close();
         map.setAttribute('aria-expanded', 'false');
@@ -181,6 +211,7 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     update(dt) {
       const stage = getStage();
       if (!stage) return;
+      updateGems(stage);
       if (previousStage !== stage || (previouslyUnlocked && !stage.progress.hintUnlocked)) {
         speech.dismiss();
         previousStage = stage;

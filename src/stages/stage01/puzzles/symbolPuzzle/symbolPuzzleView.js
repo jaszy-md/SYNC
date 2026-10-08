@@ -18,12 +18,12 @@ function drawSymbols(ctx, symbol, x, y, width, confirmed) {
   });
 }
 
-function drawTerminal(ctx, rect, symbol, active, confirmed = 0) {
+function drawTerminal(ctx, rect, symbol, active, confirmed = 0, error = false) {
   const isScreen = rect.w > 50;
   const image = stage01Image(isScreen ? 'symbol_screen' : 'symbol_robot');
   ctx.save();
-  if (active) {
-    ctx.shadowColor = '#64e4ff';
+  if (active || error) {
+    ctx.shadowColor = error ? '#ff4058' : '#64e4ff';
     ctx.shadowBlur = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
       ? 12
       : 12 + Math.sin(performance.now() / 450) * 3;
@@ -49,6 +49,19 @@ function drawTerminal(ctx, rect, symbol, active, confirmed = 0) {
     const scale = Math.min(frame.w / image.naturalWidth, frame.h / image.naturalHeight);
     const width = image.naturalWidth * scale;
     const height = image.naturalHeight * scale;
+    if (error) {
+      ctx.save();
+      ctx.fillStyle = '#b8263a';
+      ctx.shadowColor = '#ff4058';
+      ctx.shadowBlur = 14;
+      ctx.fillRect(
+        frame.x + (size - width) / 2 + width * 0.385,
+        frame.y + (size - height) / 2 + height * 0.5 - 11,
+        width * 0.21,
+        22,
+      );
+      ctx.restore();
+    }
     drawSymbols(
       ctx,
       symbol,
@@ -59,6 +72,10 @@ function drawTerminal(ctx, rect, symbol, active, confirmed = 0) {
     );
   } else {
     machine(ctx, rect, '', active ? 'ONLINE' : 'OFF');
+    if (error) {
+      ctx.fillStyle = '#b8263a';
+      ctx.fillRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6);
+    }
     ctx.fillStyle = active ? '#87d4a2' : '#c2b791';
     ctx.font = 'bold 21px monospace';
     ctx.textAlign = 'center';
@@ -94,6 +111,8 @@ export function drawSymbolPuzzle(ctx, puzzle, players) {
           reader &&
           near(reader, puzzle.clue, 25) &&
           players.some((player) => player.abilities.operateSwitch && near(player, block, 14))),
+      0,
+      puzzle.ping?.block === block,
     );
   });
 

@@ -9,11 +9,35 @@ export const KEYBOARD = [
   },
 ];
 export const GAMEPAD_INTERACT = { button: 2, label: 'X' };
+export const SHOOT_KEY = 'KeyF';
+export const SHOOT_KEYS = ['KeyF', 'ControlRight'];
+export const GAMEPAD_SHOOT = { button: 2, trigger: 7, interact: 4 };
 
-export function interactionBindings(assignments) {
-  return inputMethods(assignments).map((method) =>
+export function controllerButtons(id = '') {
+  if (/nintendo|switch|057e/i.test(id)) return { west: 'Y', trigger: 'ZR', interact: 'L' };
+  if (/playstation|dualshock|dualsense|sony|054c/i.test(id))
+    return { west: '□', trigger: 'R2', interact: 'L1' };
+  if (/xbox|xinput|045e/i.test(id)) return { west: 'X', trigger: 'RT', interact: 'LB' };
+  return { west: 'X', trigger: 'rechter trigger', interact: 'LB', unknown: true };
+}
+
+export function shootInstruction(method = { type: 'keyboard', layout: 1 }) {
+  if (method.type === 'keyboard')
+    return `Oh ja! Met ${method.layout === 0 ? 'F' : 'Ctrl'} kan ik schieten!`;
+  const labels = controllerButtons(method.controllerId);
+  return `Oh ja! Met ${labels.unknown ? 'X-knop of rechter trigger' : `${labels.west} of ${labels.trigger}`} kan ik schieten!`;
+}
+
+export function interactionBindings(assignments, weaponOwner = null, sessions = new Map()) {
+  return inputMethods(assignments).map((method, player) =>
     method.type === 'controller'
-      ? { kind: 'controller', label: GAMEPAD_INTERACT.label }
+      ? {
+          kind: 'controller',
+          label:
+            player === weaponOwner
+              ? controllerButtons(sessions.get(method.index)?.id).interact
+              : controllerButtons(sessions.get(method.index)?.id).west,
+        }
       : { kind: 'keyboard', label: KEYBOARD[method.layout].interact.replace(/^Key/, '') },
   );
 }
@@ -33,7 +57,9 @@ export function inputMethodLabel(method) {
 }
 
 export class InputManager {
-  constructor(target = window) {
+  constructor(target = window, isGameplayActive = () => true) {
+    this.isGameplayActive = isGameplayActive;
+    this.textInputFocused = false;
     this.keys = new Set();
     this.pressed = new Set();
     this.previousPads = new Map();
@@ -48,18 +74,28 @@ export class InputManager {
       this.forgetPad(gamepad.index);
       this.pads();
     });
-    const codes = new Set([...KEYBOARD.flatMap((m) => Object.values(m)), 'Escape']);
+    const codes = new Set([...KEYBOARD.flatMap((m) => Object.values(m)), 'Escape', ...SHOOT_KEYS]);
+    const isTextInput = (element) =>
+      !!element?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(element?.tagName);
+    target.addEventListener('focusin', (e) => {
+      this.textInputFocused = isTextInput(e.target);
+      if (this.textInputFocused) this.clear();
+    });
+    target.addEventListener('focusout', () => {
+      this.textInputFocused = false;
+    });
     target.addEventListener('keydown', (e) => {
-      if (
-        !codes.has(e.code) ||
-        (e.code !== 'Escape' && /SELECT|INPUT|BUTTON/.test(e.target?.tagName))
-      )
-        return;
+      if (!codes.has(e.code) || isTextInput(e.target)) return;
+      if (e.code !== 'Escape' && !this.isGameplayActive()) return;
       e.preventDefault();
       if (!this.keys.has(e.code)) this.pressed.add(e.code);
       this.keys.add(e.code);
     });
-    target.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    target.addEventListener('keyup', (e) => {
+      if (codes.has(e.code) && this.isGameplayActive() && !isTextInput(e.target))
+        e.preventDefault();
+      this.keys.delete(e.code);
+    });
     target.addEventListener('blur', () => this.clear());
   }
   pads() {
@@ -124,15 +160,28 @@ export class InputManager {
     }
     return actions;
   }
-  sample() {
+  methodFor(player) {
+    const method = inputMethods(this.assignments)[player];
+    return method.type === 'controller'
+      ? { ...method, controllerId: this.padSessions.get(method.index)?.id }
+      : method;
+  }
+  sample(weaponOwner = null) {
     const pads = this.pads();
+    const active = this.isGameplayActive() && !this.textInputFocused;
+    if (!active) {
+      this.keys.clear();
+      this.pressed.clear();
+    }
     return inputMethods(this.assignments).map((method, index) => {
       const pad = method.type === 'controller' ? pads.find((p) => p.index === method.index) : null;
       const mapping = method.type === 'keyboard' ? KEYBOARD[method.layout] : null;
       const held = (action) => !!mapping && this.keys.has(mapping[action]);
       const pressed = (action) => !!mapping && this.pressed.has(mapping[action]);
-      const buttons = pad?.buttons.map((b) => b.pressed) ?? [];
+      const buttons = pad?.buttons.map((b) => b.pressed || b.value > 0.5) ?? [];
       const previous = this.previousPads.get(index) ?? [];
+      const armed = index === weaponOwner;
+      const interactButton = armed ? GAMEPAD_SHOOT.interact : GAMEPAD_INTERACT.button;
       this.previousPads.set(index, buttons);
       const axis = pad?.axes[0] ?? 0;
       const padMove = Math.abs(axis) > 0.22 ? axis : (buttons[15] ? 1 : 0) - (buttons[14] ? 1 : 0);
@@ -140,10 +189,14 @@ export class InputManager {
         move: Math.max(-1, Math.min(1, Number(held('right')) - Number(held('left')) + padMove)),
         jump: pressed('jump') || !!(buttons[0] && !previous[0]),
         crouch: held('crouch') || !!buttons[1] || !!buttons[13],
-        interact:
-          pressed('interact') ||
-          !!(buttons[GAMEPAD_INTERACT.button] && !previous[GAMEPAD_INTERACT.button]),
-        interactHeld: held('interact') || !!buttons[GAMEPAD_INTERACT.button],
+        interact: pressed('interact') || !!(buttons[interactButton] && !previous[interactButton]),
+        interactHeld: held('interact') || !!buttons[interactButton],
+        shoot:
+          active &&
+          armed &&
+          ((!!mapping && this.pressed.has(SHOOT_KEYS[method.layout])) ||
+            !!(buttons[GAMEPAD_SHOOT.button] && !previous[GAMEPAD_SHOOT.button]) ||
+            !!(buttons[GAMEPAD_SHOOT.trigger] && !previous[GAMEPAD_SHOOT.trigger])),
       };
     });
   }

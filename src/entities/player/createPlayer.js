@@ -20,12 +20,14 @@ export class Player {
       facing: 1,
       walkElapsedMs: 0,
       interactPoseMs: 0,
+      shootPoseMs: 0,
     });
   }
   update(input, dt, solids, worldWidth = Infinity) {
     updatePlayerMovement(this, input, dt, solids, worldWidth);
     if (input.move) this.facing = input.move < 0 ? -1 : 1;
     this.interactPoseMs = Math.max(0, this.interactPoseMs - dt * 1000);
+    this.shootPoseMs = Math.max(0, this.shootPoseMs - dt * 1000);
     if (input.interact || input.interactHeld) this.interactPoseMs = INTERACT_POSE_DURATION_MS;
     this.walkElapsedMs =
       this.grounded && !this.crouched && Math.abs(this.vx) > 0.1 && !this.interactPoseMs

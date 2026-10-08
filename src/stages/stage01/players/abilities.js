@@ -6,5 +6,5 @@ export const playerAbilities = {
     collectKey: true,
     role: 'Explorer',
   },
-  player2: { jumpSpeed: 500, carryCell: true, operateSwitch: true, role: 'Tech' },
+  player2: { jumpSpeed: 500, carryCell: true, operateSwitch: true, useBlaster: true, role: 'Tech' },
 };

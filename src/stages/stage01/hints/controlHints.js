@@ -16,8 +16,7 @@ export function getStage01ControlHints(stage, bindings) {
       (target !== stage.hintDevice || stage.hintRequested)
     )
       targets.push(target);
-    // Once the cell is delivered the gate stays open without operating the winch.
-    if (stage.phase === 'TRANSFER' && stage.canOperateWinch(player)) targets.push(stage.winch);
+    if (stage.canOperateWinch(player)) targets.push(stage.winch);
     if (stage.phase === 'CHARGE')
       targets.push(...stage.chargePads.filter((pad) => pad.isPressedBy(player)));
     if (stage.canExit() && stage.door.canOpen(stage.players)) targets.push(stage.door);

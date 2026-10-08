@@ -238,7 +238,7 @@ test('gate closure avoids a blocked side, preserves feet and deals exactly one h
   assert.ok(!overlaps(player, gate));
 });
 
-test('gate closure at zero HP resets normally and only the winch gate stays unlocked after delivery', () => {
+test('gate closure at zero HP resets normally and delivery does not open the winch gate', () => {
   const stage = makeStage();
   stage.setGate(stage.gateA, true);
   Object.assign(stage.players[1], { x: stage.gateA.x, y: 600 - stage.players[1].h });
@@ -248,11 +248,11 @@ test('gate closure at zero HP resets normally and only the winch gate stays unlo
   assert.equal(stage.phase, 'SYMBOLS');
   stage.phase = 'CHARGE';
   stage.updateRoutes([idle(), idle()]);
-  assert.ok(stage.gateA.active && !stage.gateB.active);
+  assert.ok(stage.gateA.active && stage.gateB.active);
   Object.assign(stage.players[1], { x: stage.gateB.x, y: 600 - stage.players[1].h });
   stage.updateRoutes([idle(), idle()]);
   assert.equal(stage.health[1].value, 4);
-  assert.equal(stage.gateB.active, false);
+  assert.equal(stage.gateB.active, true);
 });
 
 test('exit animation locks both players in back pose and completes only after its timer', () => {

@@ -3,16 +3,6 @@ import { avatar } from '../components/avatar.js';
 import { heading } from '../components/heading.js';
 import { CHARACTERS } from '../../entities/player/characters.js';
 
-const characterBadges = [
-  'CIRKEL / CYAN',
-  'VIERKANT / AMBER',
-  'RUIT / PAARS',
-  'DRIEHOEK / ROZE',
-  'CIRKEL / GROEN',
-  'VIERKANT / GEEL',
-  'RUIT / BLAUW',
-];
-
 export function characterSelectView(selected, activePlayer) {
   const character = CHARACTERS[selected[activePlayer]];
   return (
@@ -54,12 +44,11 @@ export function characterSelectView(selected, activePlayer) {
           '" ' +
           (j === selected[1 - activePlayer] ? 'disabled' : '') +
           '>' +
+          '<span class="character-art">' +
           avatar(character) +
-          '<span>' +
+          '</span>' +
+          '<span class="character-name">' +
           character.name +
-          '<small>' +
-          characterBadges[j] +
-          '</small>' +
           '</span>' +
           ('<span class="choice-badge">' +
             (selected.includes(j) ? 'P' + (selected.indexOf(j) + 1) + ' ✓' : '') +
@@ -71,11 +60,10 @@ export function characterSelectView(selected, activePlayer) {
     ('<span class="preview-label">PLAYER ' +
       (activePlayer + 1) +
       ' / SELECTED</span>' +
+      '<div class="character-art">' +
       avatar(character) +
-      '<div>') +
-    ('<h3>' + character.name + '</h3>') +
-    ('<p>PLACEHOLDER · ' + characterBadges[selected[activePlayer]] + '</p>') +
-    '</div>' +
+      '</div>') +
+    ('<h3 class="character-name">' + character.name + '</h3>') +
     '</div>' +
     '</div>' +
     ('<div class="actions">' +

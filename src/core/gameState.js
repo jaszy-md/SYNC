@@ -17,3 +17,5 @@ export class GameState {
     this.onChange(next);
   }
 }
+
+export const createSessionState = () => ({ gems: { blue: false, green: false, gold: false } });

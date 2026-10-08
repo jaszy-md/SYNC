@@ -224,12 +224,23 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
     ];
     const rows =
       controlsTab === 'keyboard'
-        ? inputMethods(input.assignments).map((method) =>
-            method.type === 'keyboard' ? keyboardRows[method.layout] : null,
+        ? inputMethods(input.assignments).map((method, player) =>
+            method.type === 'keyboard'
+              ? [
+                  ...keyboardRows[method.layout],
+                  ...(player === 1 ? [method.layout === 0 ? 'F' : 'Rechter Ctrl'] : []),
+                ]
+              : null,
           )
         : [
             ['Stick / D-pad', 'A / ✕', 'B / ○', 'X / □'],
-            ['Stick / D-pad', 'A / ✕', 'B / ○', 'X / □'],
+            [
+              'Stick / D-pad',
+              'A / ✕',
+              'B / ○',
+              getStage()?.blaster.owner === 1 ? 'LB / L1 / L' : 'X / □ / Y',
+              'X / □ / Y of RT / R2 / ZR',
+            ],
           ];
     screen.innerHTML = controlsView(rows, controlsTab);
     ['keyboard', 'gamepad'].forEach((t) =>

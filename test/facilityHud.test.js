@@ -56,6 +56,10 @@ function setup(t) {
   }
   for (const selector of [
     '#facility-hud',
+    '#gem-flight',
+    '#gem-blue',
+    '#gem-green',
+    '#gem-gold',
     'canvas',
     '#game-controls',
     '#helper',
@@ -158,4 +162,34 @@ test('helper confirm and HUD back return to game without requiring a mouse', (t)
   hud.focusControls();
   hud.navigate({ back: true });
   assert.equal(document.activeElement, nodes.get('canvas'));
+});
+
+test('gem flight maps canvas coordinates to HUD slot and lights only the collected blue slot', (t) => {
+  const { hud, stage, nodes } = setup(t);
+  nodes.get('canvas').getBoundingClientRect = () => ({
+    left: 100,
+    top: 50,
+    width: 600,
+    height: 330,
+  });
+  nodes.get('#gem-blue').getBoundingClientRect = () => ({
+    left: 350,
+    top: 400,
+    width: 20,
+    height: 20,
+  });
+  Object.assign(stage.blaster.gem, { state: 'flying', x: 590, y: 310, w: 20, h: 20, elapsed: 0 });
+  hud.update(0);
+  assert.equal(nodes.get('#gem-flight').hidden, false);
+  assert.equal(nodes.get('#gem-flight').style.left, '400px');
+  assert.equal(nodes.get('#gem-flight').style.top, '210px');
+  stage.blaster.gem.elapsed = 0.35;
+  hud.update(0);
+  assert.equal(nodes.get('#gem-flight').style.left, '380px');
+  stage.blaster.updateGemFlight(0.35);
+  hud.update(0);
+  assert.equal(nodes.get('#gem-flight').hidden, true);
+  assert.ok(nodes.get('#gem-blue').classList.contains('collected'));
+  assert.ok(!nodes.get('#gem-green').classList.contains('collected'));
+  assert.ok(!nodes.get('#gem-gold').classList.contains('collected'));
 });

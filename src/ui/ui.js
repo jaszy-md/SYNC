@@ -10,6 +10,7 @@ import { controllersView, deviceCardsView, controllerStatus } from './screens/co
 import { State } from '../core/gameState.js';
 import { CHARACTERS } from '../entities/player/characters.js';
 import { inputMethods } from '../core/input.js';
+import { createAnimatedWorldBackground } from './animatedWorldBackground.js';
 
 export function directionalTarget(nodes, current, direction) {
   if (!nodes.includes(current)) return nodes[0];
@@ -39,7 +40,17 @@ export function directionalTarget(nodes, current, direction) {
 }
 
 // UI-only navigation lives here; the central GameState still owns play/pause.
-export function createUI({ state, input, selected, start, resume, getStage, onHint }) {
+export function createUI({
+  state,
+  input,
+  selected,
+  start,
+  resume,
+  getStage,
+  onHint,
+  createBackground = createAnimatedWorldBackground,
+}) {
+  const world = createBackground(selected);
   const screen = document.querySelector('#screen'),
     game = document.querySelector('#game');
   let panel = null,
@@ -105,6 +116,7 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
     const playing = state.current === State.PLAYING,
       paused = state.current === State.PAUSED,
       mapping = state.current === State.MAP;
+    world.setView(!playing && !paused && !mapping, state.current === State.MENU && !panel);
     game.hidden = !playing && !paused && !mapping;
     document.querySelector('#pause').hidden = !playing;
     screen.hidden = playing || mapping;
@@ -145,7 +157,7 @@ export function createUI({ state, input, selected, start, resume, getStage, onHi
   }
   function renderMenu() {
     screen.innerHTML = menuView();
-    const phrase = 'Can technology bring us back together?';
+    const phrase = 'Can humans move as one system?';
     const typed = document.querySelector('#typed');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) typed.textContent = phrase;
     else {

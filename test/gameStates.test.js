@@ -12,6 +12,8 @@ function setup(t, onHint) {
   let ui, stage;
   const state = new GameState(() => ui.render());
   ui = createUI({
+    // Navigation tests use the DOM adapter; the renderer has its own lifecycle tests.
+    createBackground: () => ({ setView() {} }),
     state,
     input: { assignments: [null, null], clear() {} },
     selected,

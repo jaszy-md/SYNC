@@ -2,9 +2,12 @@ name: SYNC - Continuous Integration
 
 on:
   push:
-    branches: [main]
+    branches: [main, codex/fix-ci-pipeline]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test-and-build:
@@ -12,19 +15,25 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Run automated tests
-        run: npm test -- --run
+        run: npm test
 
       - name: Build game with Vite
         run: npm run build

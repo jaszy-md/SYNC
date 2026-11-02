@@ -6,13 +6,13 @@ import { CHARACTERS } from '../../entities/player/characters.js';
 export function characterSelectView(selected, activePlayer) {
   const character = CHARACTERS[selected[activePlayer]];
   return (
-    '<div class="sheet">' +
+    '<div class="sheet setup-sheet selection-sheet">' +
     heading(
-      '02 / CHOOSE YOUR LOOK',
+      '01 / CHOOSE YOUR LOOK',
       'Wie zijn jullie?',
       'Je character bepaalt je look. Je rol blijft hetzelfde.',
     ) +
-    '<div class="tabs player-tabs" aria-label="Speler kiezen">' +
+    '<div class="setup-content selection-content"><div class="tabs player-tabs" aria-label="Speler kiezen">' +
     selected
       .map(
         (s, i) =>
@@ -65,10 +65,10 @@ export function characterSelectView(selected, activePlayer) {
       '</div>') +
     ('<h3 class="character-name">' + character.name + '</h3>') +
     '</div>' +
-    '</div>' +
-    ('<div class="actions">' +
-      button('back', '← Rollen', 'ghost') +
-      button('next', 'Team gereed →', 'primary') +
+    '</div></div>' +
+    ('<div class="actions setup-footer">' +
+      button('back', '← Hoofdmenu', 'ghost') +
+      button('next', 'TEAM UP →', 'primary') +
       '</div>') +
     '</div>'
   );

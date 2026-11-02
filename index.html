@@ -6,15 +6,39 @@
     <title>SYNC – Escape Chain</title>
     <link rel="stylesheet" href="/src/style.css" />
     <link rel="stylesheet" href="/src/ui/menuTheme.css" />
+    <link rel="stylesheet" href="/src/ui/stagePresentation.css" />
   </head>
   <body>
-    <main id="app">
+    <main id="app" hidden>
       <header>
         <a class="brand" href="./" aria-label="SYNC startscherm"
           ><span class="brand-word">SYNC</span><span class="brand-tag">ESCAPE CHAIN</span></a
         >
         <div class="header-end">
           <span class="level-label">LEVEL 1 <i>/</i> ONTDEKKEN</span>
+          <button
+            id="home-music"
+            class="home-music"
+            type="button"
+            aria-pressed="false"
+            aria-label="Muziek dempen"
+            title="Muziek dempen"
+            hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <path d="M3 9h4l5-4v14l-5-4H3z" />
+              <g class="music-playing"><path d="M16 8q4 4 0 8M19 5q7 7 0 14" /></g>
+              <g class="music-muted"><path d="m16 9 6 6m0-6-6 6" /></g>
+            </svg>
+          </button>
         </div>
       </header>
       <div id="content">

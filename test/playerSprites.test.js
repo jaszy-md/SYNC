@@ -14,6 +14,9 @@ import {
 } from '../src/entities/player/playerConfig.js';
 import { CHARACTERS } from '../src/entities/player/characters.js';
 import { makeStage, idle } from '../test-support/stage.js';
+import { Player } from '../src/entities/player/createPlayer.js';
+import { shouldMirrorSprite } from '../src/entities/player/spriteOrientation.js';
+import { preloadTravelerSprites, TRAVELERS } from '../src/ui/menuTravelers.js';
 
 test('preloading waits for decoding, settles missing files and reuses the cache', async (t) => {
   const created = [];
@@ -121,7 +124,7 @@ test('all poses share one pixel scale, preserve aspect ratio and remain anchored
     [{}, 'idle.png'],
     [{ vx: 240 }, 'walk-left.png'],
     [{ vx: 240, walkElapsedMs: 200 }, 'walk-right.png'],
-    [{ grounded: false }, 'jump.png'],
+    [{ grounded: false, facing: 1 }, 'jump.png'],
     [
       { crouched: true, h: PLAYER_CROUCH_HEIGHT, y: 100 + PLAYER_HEIGHT - PLAYER_CROUCH_HEIGHT },
       'crouch.png',
@@ -147,11 +150,11 @@ test('all poses share one pixel scale, preserve aspect ratio and remain anchored
     assert.equal(
       calls.some(([key]) => key === 'scale'),
       false,
-      'left retains original orientation',
+      'pose retains its correct source orientation',
     );
   }
   calls = [];
-  drawPlayer({ ...player, facing: 1 }, ctx);
+  drawPlayer({ ...player, facing: 1, vx: 240 }, ctx);
   assert.deepEqual(
     calls.find(([key]) => key === 'scale'),
     ['scale', -1, 1],
@@ -165,6 +168,128 @@ test('all poses share one pixel scale, preserve aspect ratio and remain anchored
     calls.some(([key]) => key === 'fillRect'),
     'genuinely missing sprite uses fallback',
   );
+});
+
+test('both players retain facing on vertical jumps and turn immediately in the air for every character', () => {
+  for (const character of CHARACTERS) {
+    for (const id of [0, 1]) {
+      const stage = makeStage();
+      const player = new Player(id, character, { x: 300, y: 50 }, stage.players[id].abilities);
+      for (const move of [1, 0, -1, 0, 1]) {
+        const before = player.facing;
+        player.update({ ...idle(), move }, 1 / 120, [], 1200);
+        assert.equal(player.facing, move ? Math.sign(move) : before);
+        assert.equal(player.grounded, false);
+        assert.equal(shouldMirrorSprite('jump', player.facing), player.facing < 0);
+        for (const pose of ['walkLeft', 'walkRight', 'crouch'])
+          assert.equal(shouldMirrorSprite(pose, player.facing), player.facing > 0);
+      }
+    }
+  }
+});
+
+test('homepage readiness waits for every traveler pose and reuses decoded images on return', async (t) => {
+  const previous = globalThis.Image;
+  t.after(() => {
+    globalThis.Image = previous;
+  });
+  const created = [];
+  globalThis.Image = class {
+    naturalWidth = 40;
+    naturalHeight = 100;
+    constructor() {
+      created.push(this);
+    }
+    set src(path) {
+      this.path = path;
+    }
+  };
+  let ready = false;
+  const loading = preloadTravelerSprites().then(() => {
+    ready = true;
+  });
+  assert.equal(created.length, TRAVELERS.length * 4);
+  created[0].onerror();
+  for (const image of created.slice(1, -1)) await image.onload();
+  assert.equal(ready, false);
+  await created.at(-1).onload();
+  await loading;
+  assert.equal(ready, true, 'a failed pose does not block the homepage');
+  await preloadTravelerSprites();
+  assert.equal(created.length, TRAVELERS.length * 4);
+  const calls = [];
+  const ctx = new Proxy(
+    {},
+    {
+      get:
+        (_, key) =>
+        (...args) =>
+          calls.push([key, ...args]),
+      set: () => true,
+    },
+  );
+  for (const character of TRAVELERS) {
+    for (const id of [0, 1]) {
+      for (const facing of [-1, 1]) {
+        for (const vy of [-200, 200]) {
+          calls.length = 0;
+          const player = {
+            id,
+            character,
+            x: 50,
+            y: 100,
+            w: PLAYER_WIDTH,
+            h: PLAYER_HEIGHT,
+            grounded: false,
+            facing,
+            vx: 0,
+            vy,
+          };
+          const before = { ...player };
+          drawPlayer(player, ctx);
+          assert.ok(calls.find(([key]) => key === 'drawImage')[1].path.endsWith('/jump.png'));
+          assert.equal(
+            calls.some(([key]) => key === 'scale'),
+            facing < 0,
+          );
+          assert.deepEqual(
+            player,
+            before,
+            'rendering cannot change positions, velocity or hitboxes',
+          );
+        }
+      }
+    }
+  }
+});
+
+test('stalled sprite requests settle and ignore late completion instead of popping in', async (t) => {
+  const previous = {
+    Image: globalThis.Image,
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout,
+  };
+  t.after(() => Object.assign(globalThis, previous));
+  let expire, image;
+  globalThis.setTimeout = (callback) => {
+    expire = callback;
+    return 1;
+  };
+  globalThis.clearTimeout = () => {};
+  globalThis.Image = class {
+    naturalWidth = 40;
+    naturalHeight = 100;
+    constructor() {
+      image = this;
+    }
+    set src(_) {}
+  };
+  const character = { sprites: { jump: '/stalled-test.png' } };
+  const ready = preloadCharacterSprites([character]);
+  expire();
+  await ready;
+  await image.onload();
+  assert.equal(getCharacterImage(character.sprites.jump), null);
 });
 
 test('spawn, standing and crouched collision sizes use central config with stable feet', () => {

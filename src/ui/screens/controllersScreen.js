@@ -27,7 +27,7 @@ export const controllerStatus = (count) =>
 
 export function controllersView() {
   return (
-    '<div class="sheet narrow">' +
+    '<div class="sheet narrow controllers-sheet">' +
     heading(
       'DEVICE SETUP / LOCAL ONLY',
       'Controllers koppelen',

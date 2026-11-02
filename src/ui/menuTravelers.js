@@ -1,8 +1,18 @@
 import { CHARACTERS } from '../entities/player/characters.js';
-import { getCharacterImage } from '../entities/player/characterAssets.js';
+import { getCharacterImage, preloadImage } from '../entities/player/characterAssets.js';
+import { shouldMirrorSprite } from '../entities/player/spriteOrientation.js';
 import { ENTRY, entryArrival } from './portalEffect.js';
 
 export const TRAVELERS = [...new Map(CHARACTERS.map((c) => [c.id, c])).values()];
+export function preloadTravelerSprites() {
+  return Promise.all(
+    TRAVELERS.flatMap((character) =>
+      ['idle', 'walkLeft', 'walkRight', 'jump'].map((pose) =>
+        preloadImage(character.sprites[pose]),
+      ),
+    ),
+  );
+}
 const noise = (n) => {
   const v = Math.sin(n * 127.1 + 71.7) * 43758.5453;
   return v - Math.floor(v);
@@ -46,7 +56,7 @@ export function travelerLayout(width, height, menuBottom = 0, menuRight = 0) {
 
 // Jump sources were visually verified for every character: they face right.
 // Both walk poses face left; idle is front-facing and can remain unmirrored.
-export const travelerMirror = (pose) => pose === 'walkLeft' || pose === 'walkRight';
+export const travelerMirror = (pose) => shouldMirrorSprite(pose, 1);
 
 export function travelerEntry(layout, index, elapsed, entryX) {
   const start =
@@ -78,7 +88,10 @@ export function drawTravelers(ctx, layout, time, cycle, reduced, portal, onLoad)
       renderedPose = 'walkRight';
       image = getCharacterImage(character.sprites.walkRight, onLoad);
     }
-    if (!image) return;
+    if (!image) {
+      renderedPose = 'idle';
+      image = getCharacterImage(character.sprites.idle, onLoad);
+    }
     const x = entry.x;
     const foot = layout.ground - 1 - (i % 3);
     ctx.save();
@@ -102,6 +115,19 @@ export function drawTravelers(ctx, layout, time, cycle, reduced, portal, onLoad)
       Math.PI * 2,
     );
     ctx.fill();
+    if (!image) {
+      // A failed request keeps a stable, visible pixel figure instead of an empty slot.
+      const h = layout.spriteHeight * 0.8,
+        w = h * 0.3;
+      ctx.fillStyle = character.fallback.color;
+      ctx.fillRect(x - w / 2, foot - h - lift * layout.leap, w, h * 0.28);
+      ctx.fillRect(x - w / 2, foot - h * 0.65 - lift * layout.leap, w, h * 0.4);
+      ctx.fillStyle = '#233d58';
+      ctx.fillRect(x - w / 2, foot - h * 0.25 - lift * layout.leap, w * 0.4, h * 0.25);
+      ctx.fillRect(x + w * 0.1, foot - h * 0.25 - lift * layout.leap, w * 0.4, h * 0.25);
+      ctx.restore();
+      return;
+    }
     // A fixed source-pixel scale across poses preserves proportions when jumping.
     const sourceScale = layout.spriteHeight / 1300;
     const w = image.naturalWidth * sourceScale,

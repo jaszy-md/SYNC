@@ -1,0 +1,34 @@
+:is(#facility-hud, .setup-sheet) .system-menu-button {
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #a4b8ac;
+  box-shadow: none;
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  position: relative;
+  transition:
+    transform 0.18s,
+    filter 0.18s;
+}
+:is(#facility-hud, .setup-sheet) .system-menu-button svg {
+  width: 42px;
+  height: 42px;
+  filter: drop-shadow(1px 3px 0 #0008);
+}
+:is(#facility-hud, .setup-sheet) .system-menu-button:hover {
+  filter: brightness(1.15);
+}
+:is(#facility-hud, .setup-sheet) .system-menu-button:focus {
+  outline: none;
+}
+:is(#facility-hud, .setup-sheet) .system-menu-button:focus-visible,
+:is(#facility-hud, #screen).navigating .system-menu-button:focus {
+  outline: 1px solid #a6cec4;
+  outline-offset: 3px;
+  filter: drop-shadow(0 0 5px #97d7ca55);
+}

@@ -11,7 +11,22 @@ export function installUiDom(t) {
   document.activeElement = null;
   function node(id) {
     const element = new globalThis.EventTarget();
-    Object.assign(element, { id, hidden: false, style: {}, disabled: false });
+    const classes = new Set();
+    Object.assign(element, {
+      id,
+      hidden: false,
+      style: {},
+      disabled: false,
+      classList: {
+        toggle(name, force) {
+          if (force) classes.add(name);
+          else classes.delete(name);
+        },
+        contains(name) {
+          return classes.has(name);
+        },
+      },
+    });
     element.setAttribute = () => {};
     element.removeAttribute = () => {};
     element.focus = () => {
@@ -29,6 +44,8 @@ export function installUiDom(t) {
   const screen = node('screen'),
     game = node('game');
   node('pause');
+  node('app');
+  node('home-music');
   let html = '',
     current = [];
   Object.defineProperty(screen, 'innerHTML', {

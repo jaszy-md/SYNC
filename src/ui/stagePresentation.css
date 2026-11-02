@@ -1,0 +1,472 @@
+/* Both setup steps share the exact same outer box, independent of their content. */
+.setup-screen .sheet.setup-sheet {
+  --setup-width: 1060px;
+  --setup-height: min(540px, calc(100dvh - 124px));
+  --setup-padding: clamp(16px, 2.5vw, 30px);
+  width: min(var(--setup-width), 100%);
+  max-width: var(--setup-width);
+  height: var(--setup-height);
+  padding: var(--setup-padding);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) 46px;
+  gap: 18px;
+  transform: none !important;
+}
+.setup-sheet .screen-head,
+.briefing-heading {
+  margin: 0;
+}
+.setup-content {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #73b8cd #102238;
+}
+.selection-sheet .character-grid {
+  padding: 8px;
+  scroll-padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #73b8cd #102238;
+  scrollbar-gutter: stable;
+}
+.character-grid::-webkit-scrollbar,
+.setup-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.character-grid::-webkit-scrollbar-track,
+.setup-content::-webkit-scrollbar-track {
+  background: #102238;
+  border-radius: 8px;
+}
+.character-grid::-webkit-scrollbar-thumb,
+.setup-content::-webkit-scrollbar-thumb {
+  background: #73b8cd;
+  border: 2px solid #102238;
+  border-radius: 8px;
+}
+.character-grid::-webkit-scrollbar-thumb:hover,
+.setup-content::-webkit-scrollbar-thumb:hover {
+  background: #a3dfec;
+}
+.selection-content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  overflow: hidden;
+}
+.selection-content .tabs {
+  margin: 0;
+}
+.selection-sheet .character-layout {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+.selection-sheet .character-preview {
+  min-height: 0;
+}
+.setup-footer {
+  margin: 0;
+  min-width: 0;
+  align-items: center;
+}
+.selection-sheet .character-option:focus {
+  outline: none;
+}
+.selection-sheet .character-option:focus-visible,
+#screen.navigating .character-option:focus {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+.briefing-heading {
+  position: relative;
+}
+.briefing-heading h2 {
+  font:
+    900 clamp(28px, 4vw, 46px)/1.05 ui-monospace,
+    monospace;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+.briefing-heading .eyebrow {
+  color: #b8d9c8;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.briefing-subtitles {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+}
+.subtitle-separator {
+  color: #87b6ae;
+}
+.briefing-stage-tag {
+  position: absolute;
+  right: 0;
+  top: 7px;
+  border: 1px solid #719b8c66;
+  border-radius: 5px;
+  padding: 7px 10px;
+  font:
+    700 10px ui-monospace,
+    monospace;
+  color: #93c7af;
+  background: #162d35;
+}
+.briefing-team {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  height: 100%;
+  min-height: 280px;
+  align-items: stretch;
+  gap: 12px;
+}
+.briefing-player {
+  position: relative;
+  display: grid;
+  grid-template-rows: 28px minmax(0, 1fr) 24px;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  border: 1px solid #68888b66;
+  border-top: 3px solid var(--player-accent);
+  border-radius: 12px;
+  background: #162d40e8;
+  box-shadow: inset 0 -4px #0b1d2c;
+  animation: briefing-arrival 0.25s ease-out;
+}
+.briefing-player::before,
+.briefing-player::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border: 1px solid #8caaa4;
+  background: #263f48;
+}
+.briefing-player::before {
+  left: 6px;
+}
+.briefing-player::after {
+  right: 6px;
+}
+.briefing-player-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.briefing-player-head .pill {
+  color: var(--player-accent);
+  font-size: 10px;
+}
+.briefing-role {
+  font-size: 10px;
+  color: #adc6ca;
+  letter-spacing: 0.4px;
+}
+.briefing-player-body {
+  display: grid;
+  grid-template-columns: minmax(85px, 0.7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  align-items: stretch;
+  min-height: 0;
+}
+.briefing-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+.briefing-portrait .avatar {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  max-height: 180px;
+  max-width: 135px;
+}
+.briefing-portrait .avatar.sprite img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.briefing-portrait h3 {
+  color: #edf2e4;
+  font-size: 18px;
+  margin: 0;
+}
+/* Equal parent height and equal grid rows align SKILL and WEAKNESS in both panels. */
+.briefing-abilities {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 0;
+  height: 100%;
+}
+.briefing-ability {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  min-width: 0;
+}
+.ability-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: #9ce8dc0c;
+  border: 1px solid #80b9b233;
+  border-radius: 7px;
+  color: #9de1cd;
+}
+.skill-icon {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+.weakness .ability-icon {
+  color: #d8b88b;
+  background: #d8b88b0b;
+  border-color: #d8b88b33;
+}
+.ability-kind {
+  display: block;
+  margin-bottom: 5px;
+  font:
+    700 9px ui-monospace,
+    monospace;
+  letter-spacing: 1.5px;
+  color: #9de1cd;
+}
+.weakness .ability-kind {
+  color: #d8b88b;
+}
+.briefing-ability h4 {
+  margin: 0 0 5px;
+  font:
+    800 13px ui-monospace,
+    monospace;
+  color: #eff4e6;
+}
+.briefing-ability p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.briefing-input {
+  font-size: 10px;
+  color: #a3bac3;
+  border-top: 1px solid #7d9ba12a;
+  padding-top: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.briefing-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #9de1cd;
+  position: relative;
+}
+.briefing-link::before {
+  content: '';
+  position: absolute;
+  top: 45%;
+  left: -12px;
+  right: -12px;
+  height: 1px;
+  background: #8bcac15c;
+}
+.briefing-link svg {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: #14283a;
+  padding: 5px;
+  border: 1px solid #629085;
+  border-radius: 10px;
+}
+.briefing-link span {
+  font:
+    800 9px ui-monospace,
+    monospace;
+  letter-spacing: 1px;
+}
+.briefing-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.briefing-footer .actions {
+  margin: 0;
+  justify-content: flex-end;
+  gap: 12px;
+}
+@keyframes briefing-arrival {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.controllers-sheet .card,
+.controllers-sheet .connected-controller,
+.controllers-sheet .device-select,
+.controllers-sheet .device-options {
+  border: 1px solid #8cc8dd66;
+  box-shadow: 0 0 8px #73b8cd0d;
+}
+.controllers-sheet button:focus,
+.controllers-sheet .device-options button:focus {
+  outline: 1px solid #a3dfec;
+  outline-offset: 2px;
+  box-shadow: 0 0 8px #73b8cd33;
+}
+@media (max-width: 800px) {
+  .briefing-team {
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 470px;
+  }
+  .briefing-stage-tag {
+    display: none;
+  }
+  .briefing-player {
+    padding: 12px;
+    grid-template-rows: 38px minmax(0, 1fr) 24px;
+  }
+  .briefing-player-head {
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+  }
+  .briefing-player-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 120px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .briefing-portrait .avatar {
+    max-height: 94px;
+    max-width: 110px;
+  }
+  .briefing-link svg {
+    width: 30px;
+    height: 30px;
+    padding: 3px;
+  }
+  .briefing-link span {
+    font-size: 7px;
+  }
+  .briefing-ability h4 {
+    font-size: 12px;
+  }
+  .briefing-ability p {
+    font-size: 11px;
+  }
+}
+@media (max-width: 600px) {
+  .setup-screen .sheet.setup-sheet {
+    --setup-height: min(680px, calc(100dvh - 124px));
+    --setup-padding: 14px;
+    gap: 14px;
+  }
+  .briefing-heading h2 {
+    margin-bottom: 8px;
+    font-size: 28px;
+  }
+  .briefing-heading .eyebrow {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .briefing-subtitles {
+    gap: 4px 8px;
+    font-size: 11px;
+  }
+  .briefing-team {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    min-height: 490px;
+  }
+  .briefing-link {
+    display: none;
+  }
+  .briefing-player {
+    padding: 10px;
+  }
+  .briefing-role {
+    font-size: 8px;
+  }
+  .briefing-portrait h3 {
+    font-size: 16px;
+  }
+  .briefing-ability {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .ability-icon {
+    width: 24px;
+    height: 24px;
+  }
+  .skill-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .briefing-ability h4 {
+    font-size: 10px;
+    overflow-wrap: anywhere;
+  }
+  .briefing-input {
+    font-size: 8px;
+  }
+  .briefing-footer {
+    gap: 6px;
+  }
+  .briefing-footer .actions {
+    gap: 6px;
+  }
+  .briefing-footer .actions button {
+    font-size: 10px;
+    padding: 9px 8px;
+  }
+}
+#app.facility-session {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+}
+#app.facility-session::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #09132155, #090d2099),
+    url('/assets/images/stage01/gameplay-surround.svg') center/cover no-repeat;
+}
+.facility-session #canvas-wrap canvas {
+  border-color: #506367;
+  box-shadow: 0 12px 36px #030c1840;
+}

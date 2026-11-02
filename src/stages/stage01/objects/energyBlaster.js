@@ -6,6 +6,7 @@ import { getCharacterImage } from '../../../entities/player/characterAssets.js';
 import { getPlayerSpriteBounds } from '../../../entities/player/playerRenderer.js';
 import { drawStage01Image } from '../stage01Assets.js';
 import { shootInstruction } from '../../../core/input.js';
+import { gameplayAudio } from '../../../core/audio.js';
 import {
   BLASTER_COOLDOWN_MS,
   BLASTER_DAMAGE,
@@ -138,6 +139,7 @@ export class EnergyBlaster {
       vx: direction * BLASTER_PROJECTILE_SPEED,
       age: 0,
     });
+    gameplayAudio.play('shoot');
     return true;
   }
 

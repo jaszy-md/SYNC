@@ -3,7 +3,6 @@ import { completeView } from './screens/completeScreen.js';
 import { menuView } from './screens/menuScreen.js';
 import { rolesView } from './screens/rolesScreen.js';
 import { characterSelectView } from './screens/characterSelectScreen.js';
-import { readyView } from './screens/readyScreen.js';
 import { pauseView } from './screens/pauseScreen.js';
 import { controlsView } from './screens/controlsScreen.js';
 import { controllersView, deviceCardsView, controllerStatus } from './screens/controllersScreen.js';
@@ -11,6 +10,8 @@ import { State } from '../core/gameState.js';
 import { CHARACTERS } from '../entities/player/characters.js';
 import { inputMethods } from '../core/input.js';
 import { createAnimatedWorldBackground } from './animatedWorldBackground.js';
+import { systemMenuView } from './screens/systemMenuScreen.js';
+import { homepageMusic as defaultHomepageMusic } from '../core/audio.js';
 
 export function directionalTarget(nodes, current, direction) {
   if (!nodes.includes(current)) return nodes[0];
@@ -49,6 +50,7 @@ export function createUI({
   getStage,
   onHint,
   createBackground = createAnimatedWorldBackground,
+  homepageMusic = defaultHomepageMusic,
 }) {
   const world = createBackground(selected);
   const screen = document.querySelector('#screen'),
@@ -67,13 +69,47 @@ export function createUI({
       event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
   });
+  screen.addEventListener('pointerdown', () => screen.classList.toggle('navigating', false));
   const refreshAvatars = () => updateCharacterAvatars(screen, refreshAvatars);
   const bind = (id, fn) => document.getElementById(id)?.addEventListener('click', fn);
+  const musicToggle = document.getElementById('home-music');
+  const syncMusicToggle = () => {
+    if (!musicToggle) return;
+    musicToggle.hidden = state.current !== State.MENU || !!panel;
+    musicToggle.setAttribute('aria-pressed', String(homepageMusic.muted));
+    musicToggle.setAttribute('data-playing', String(homepageMusic.playing));
+    const label = homepageMusic.muted
+      ? 'Muziek inschakelen'
+      : homepageMusic.playing
+        ? 'Muziek dempen'
+        : 'Muziek starten';
+    musicToggle.setAttribute('aria-label', label);
+    musicToggle.setAttribute('title', label);
+  };
+  const onMusicToggle = () => {
+    if (state.current !== State.MENU || panel) return;
+    if (!homepageMusic.muted && !homepageMusic.playing && !homepageMusic.pending)
+      homepageMusic.play();
+    else homepageMusic.toggleMuted();
+    syncMusicToggle();
+  };
+  musicToggle?.addEventListener('click', onMusicToggle);
+  const unsubscribeMusic = homepageMusic.subscribe(syncMusicToggle);
+  if (import.meta.hot)
+    import.meta.hot.dispose(() => {
+      unsubscribeMusic();
+      musicToggle?.removeEventListener('click', onMusicToggle);
+      homepageMusic.setActive(false);
+    });
   // Shrink only when a compact panel still exceeds a short viewport. Transform
   // does not affect measured layout size, so ResizeObserver cannot oscillate.
   const fitPanel = () => {
     const sheet = screen.querySelector('.sheet');
     if (!sheet || screen.hidden) return;
+    if (sheet.classList.contains('setup-sheet')) {
+      sheet.style.transform = 'none';
+      return;
+    }
     const style = getComputedStyle(screen);
     const height =
       screen.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - 8;
@@ -108,6 +144,9 @@ export function createUI({
     )?.focus({ preventScroll: true });
   }
   function render() {
+    // Enforce the exact home view before any background/layout render can fail.
+    homepageMusic.setActive(state.current === State.MENU && !panel);
+    syncMusicToggle();
     closeDeviceSelect(true);
     resizeObserver.disconnect();
     clearInterval(typingTimer);
@@ -117,10 +156,16 @@ export function createUI({
       paused = state.current === State.PAUSED,
       mapping = state.current === State.MAP;
     world.setView(!playing && !paused && !mapping, state.current === State.MENU && !panel);
+    document
+      .querySelector('#app')
+      .classList.toggle('facility-session', playing || paused || mapping);
     game.hidden = !playing && !paused && !mapping;
     document.querySelector('#pause').hidden = !playing;
     screen.hidden = playing || mapping;
+    const navigating = screen.classList.contains('navigating');
     screen.className = paused ? 'overlay' : '';
+    screen.classList.toggle('navigating', navigating);
+    screen.classList.toggle('setup-screen', state.current === State.SETUP && !panel);
     screen.setAttribute('role', paused ? 'dialog' : 'region');
     if (paused) screen.setAttribute('aria-modal', 'true');
     else screen.removeAttribute('aria-modal');
@@ -176,8 +221,6 @@ export function createUI({
   }
   function renderSetup() {
     if (setupStep === 0) {
-      screen.innerHTML = rolesView();
-    } else if (setupStep === 1) {
       screen.innerHTML = characterSelectView(selected, activePlayer);
       selected.forEach((_, i) =>
         bind(`player-${i}`, () => {
@@ -193,9 +236,8 @@ export function createUI({
         }),
       );
     } else {
-      screen.innerHTML = readyView(selected, input.assignments);
-      bind('controls', () => open('controls'));
-      bind('controllers', () => open('controllers'));
+      screen.innerHTML = rolesView(selected, input.assignments);
+      bind('setup-menu', () => open('system'));
       bind('play', start);
     }
     bind('back', () => {
@@ -226,7 +268,12 @@ export function createUI({
   let controlsTab = 'keyboard';
   function renderPanel() {
     if (panel === 'controls') renderControls();
-    else renderControllers();
+    else if (panel === 'system') {
+      screen.innerHTML = systemMenuView();
+      bind('main-menu', mainMenu);
+      bind('controls', () => open('controls'));
+      bind('controllers', () => open('controllers'));
+    } else renderControllers();
   }
 
   function renderControls() {
@@ -267,7 +314,7 @@ export function createUI({
 
   function saveControls() {
     // The underlying GameState and setupStep retain the view that opened Controls.
-    panel = null;
+    panel = returnPanel;
     returnPanel = null;
     render();
     focusReturnAction();
@@ -429,7 +476,7 @@ export function createUI({
   function refreshPads() {
     input.pads();
     if (panel !== 'controllers') {
-      if (panel === 'controls' || (!panel && state.current === State.SETUP && setupStep === 2)) {
+      if (panel === 'controls' || (!panel && state.current === State.SETUP && setupStep === 1)) {
         const focusId = document.activeElement?.id;
         render();
         document.getElementById(focusId)?.focus({ preventScroll: true });
@@ -484,6 +531,7 @@ export function createUI({
     render,
     closePanel,
     navigate({ direction, confirm, back, menu }) {
+      if (direction || confirm) screen.classList.toggle('navigating', true);
       if (panel === 'controllers') refreshPads();
       if (editingSelect) {
         if (back || confirm) closeDeviceSelect(back);
@@ -504,7 +552,7 @@ export function createUI({
         return;
       }
       const nodes = [
-        ...document.querySelectorAll('#screen button, #screen select, header a'),
+        ...document.querySelectorAll('#screen button, #screen select, header a, header button'),
       ].filter((node) => !node.disabled && node.getClientRects().length);
       if (direction) {
         directionalTarget(nodes, document.activeElement, direction)?.focus();

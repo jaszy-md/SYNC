@@ -1,4 +1,5 @@
 const images = new Map();
+export const ASSET_LOAD_TIMEOUT_MS = 10000;
 
 export function getCharacterImage(path, onLoad) {
   if (!path || typeof Image === 'undefined') return null;
@@ -11,22 +12,27 @@ export function getCharacterImage(path, onLoad) {
     });
     entry = { image, status: 'loading', listeners: new Set(), ready };
     images.set(path, entry);
+    const finish = (status) => {
+      if (entry.status !== 'loading') return;
+      clearTimeout(timeout);
+      entry.status = status;
+      settle(status === 'loaded' ? image : null);
+      if (status === 'loaded') entry.listeners.forEach((listener) => listener());
+      entry.listeners.clear();
+    };
+    // Bound network/decode stalls. Late arrivals cannot cause a delayed pop-in.
+    const timeout = setTimeout(() => finish('error'), ASSET_LOAD_TIMEOUT_MS);
+    timeout.unref?.();
     image.onload = async () => {
+      if (entry.status !== 'loading') return;
       try {
         await image.decode?.();
-        entry.status = image.naturalWidth > 0 && image.naturalHeight > 0 ? 'loaded' : 'error';
+        finish(image.naturalWidth > 0 && image.naturalHeight > 0 ? 'loaded' : 'error');
       } catch {
-        entry.status = 'error';
+        finish('error');
       }
-      settle(entry.status === 'loaded' ? image : null);
-      if (entry.status === 'loaded') entry.listeners.forEach((listener) => listener());
-      entry.listeners.clear();
     };
-    image.onerror = () => {
-      entry.status = 'error';
-      settle(null);
-      entry.listeners.clear();
-    };
+    image.onerror = () => finish('error');
     image.src = path;
   }
   if (entry.status === 'loading' && onLoad) entry.listeners.add(onLoad);

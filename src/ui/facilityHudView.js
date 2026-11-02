@@ -1,3 +1,5 @@
+import { systemButton } from './components/systemButton.js';
+
 export function helperCharacterView() {
   return (
     '<svg viewBox="0 0 64 64" aria-hidden="true" shape-rendering="crispEdges" class="helper-character">' +
@@ -24,8 +26,8 @@ export function facilityHudView() {
     '<span class="hud-navigation" aria-hidden="true">TAB / VIEW · ESC / B</span>' +
     '<div class="hud-tools"><button id="map" class="hud-object map-object" aria-label="Open de Escape Chain-wereldkaart" aria-haspopup="dialog" aria-expanded="false" title="Escape Chain-wereldkaart">' +
     '<span class="map-icon-fallback" aria-hidden="true"><svg viewBox="0 0 56 56"><path fill="#a7ab94" stroke="#4f5951" stroke-width="2" d="m8 15 13-4 13 4 14-4v30l-14 4-13-4-13 4z"/><path stroke="#687769" fill="none" d="M21 11v30m13-26v30M12 33l13-9 10 8 9-12"/><circle cx="25" cy="24" r="3" fill="#344d4d"/></svg></span><img class="hud-map-image" alt="" hidden /></button>' +
-    '<button id="pause" class="hud-object system-object" aria-label="Open systeem en instellingen" title="Systeem en instellingen" hidden>' +
-    '<svg viewBox="0 0 56 56" aria-hidden="true" shape-rendering="crispEdges"><path fill="#677676" d="M23 6h10v6h9v9h7v14h-7v9h-9v6H23v-6h-9v-9H7V21h7v-9h9z"/><path fill="#17272d" d="M17 17h22v22H17z"/><path stroke="#b4c5b9" stroke-width="2" fill="none" d="M28 18v13m-7-9a11 11 0 1 0 14 0"/></svg></button></div></nav>' +
+    systemButton({ hidden: true }) +
+    '</div></nav>' +
     '<aside id="helper-bubble" class="helper-bubble" hidden aria-label="Mica spreekt"><span class="helper-name">MICA <small>/ onderhoudseenheid</small></span><button id="close-speech" aria-label="Sluit praatwolkje" class="bubble-close">×</button><p id="helper-text" aria-hidden="true"></p><span id="helper-announcement" class="sr-only" role="status" aria-live="polite"></span></aside>' +
     '<dialog id="facility-map" aria-labelledby="map-title"><article class="map-document"><header class="map-heading"><div><small>SYNC / WERELDATLAS</small><h2 id="map-title">Escape Chain</h2></div><button id="close-map" class="map-close" aria-label="Sluit de kaart"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 6 13 13 24 25M6 8 17 18 25 24M25 6 18 14 7 26M23 7 15 17 8 24" /></svg></button></header><div class="map-image-frame"><img id="map-image" alt="Kaart van de volledige Escape Chain-wereld" hidden /><div id="map-fallback">' +
     mapFallbackView() +

@@ -8,6 +8,11 @@ import { preloadCharacterSprites, preloadImage } from './entities/player/charact
 import { BLASTER_GUN_SPRITE } from './stages/stage01/stage01CombatConfig.js';
 import { StageManager } from './core/stageManager.js';
 import { createUI } from './ui/ui.js';
+import { preloadTravelerSprites } from './ui/menuTravelers.js';
+import { gameplayAudio, homepageMusic } from './core/audio.js';
+
+gameplayAudio.initialize(window);
+homepageMusic.initialize(window);
 
 const canvas = document.querySelector('canvas'),
   ctx = canvas.getContext('2d');
@@ -34,12 +39,17 @@ const state = new GameState(() => {
 const hud = createFacilityHud({ state, getStage: () => stage, returnToWorld });
 let starting = false;
 async function start() {
+  gameplayAudio.unlock();
   if (starting) return;
   starting = true;
   const startingState = state.current;
   const characters = selected.map((i) => CHARACTERS[i]);
   try {
-    await Promise.all([preloadCharacterSprites(characters), preloadImage(BLASTER_GUN_SPRITE)]);
+    await Promise.all([
+      preloadCharacterSprites(characters),
+      preloadImage(BLASTER_GUN_SPRITE),
+      gameplayAudio.preload(),
+    ]);
     if (state.current !== startingState) return;
     input.clear();
     accumulator = 0;
@@ -64,6 +74,8 @@ function returnToWorld() {
   input.endFrame();
   accumulator = 0;
 }
+// No visible journey or advancing world clock until every initial pose has settled.
+await preloadTravelerSprites();
 const ui = createUI({
   state,
   input,
@@ -200,5 +212,6 @@ function frame(time) {
   }
   requestAnimationFrame(frame);
 }
+document.querySelector('#app').hidden = false;
 ui.render();
 requestAnimationFrame(frame);

@@ -1,4 +1,26 @@
 /* Menu-only theme: Stage 1 and its HUD retain their original presentation. */
+.header-end .home-music {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border: 1px solid #88b8c366;
+  border-radius: 6px;
+  color: #b7d6d8;
+  background: #122439e6;
+  box-shadow: inset 0 -3px #08152266;
+}
+.home-music:hover,
+.home-music:focus-visible {
+  color: #e4f8ef;
+  border-color: var(--cyan);
+}
+.home-music[data-playing='true'] .music-muted,
+.home-music:not([data-playing='true']) .music-playing {
+  display: none;
+}
 #menu-world {
   position: fixed;
   inset: 0;

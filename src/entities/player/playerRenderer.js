@@ -1,4 +1,5 @@
 import { getCharacterImage } from './characterAssets.js';
+import { shouldMirrorSprite } from './spriteOrientation.js';
 import {
   PLAYER_HEIGHT,
   PLAYER_SPRITE_SCALE,
@@ -42,8 +43,7 @@ export function drawPlayer(player, ctx) {
     const drawWidth = image.naturalWidth * spriteScale;
     const drawX = x + (w - drawWidth) / 2;
     ctx.save();
-    // Source sprites face left; mirror only when facing right.
-    if (player.facing > 0) {
+    if (shouldMirrorSprite(pose, player.facing)) {
       ctx.translate(drawX + drawWidth, drawY);
       ctx.scale(-1, 1);
       ctx.drawImage(image, 0, 0, drawWidth, drawHeight);

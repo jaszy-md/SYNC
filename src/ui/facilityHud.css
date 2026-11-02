@@ -1,3 +1,4 @@
+@import './components/systemButton.css';
 /* Physical HUD objects: no coloured button panels. */
 .hidden-gems {
   display: flex;

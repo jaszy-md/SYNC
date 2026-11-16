@@ -4,10 +4,10 @@ import { createSessionState } from '../../core/gameState.js';
 import { drawHealth } from '../../ui/components/healthPortrait.js';
 import { getCharacterImage } from '../../entities/player/characterAssets.js';
 import { drawJungle } from './jungleView.js';
+import { LAND, WORLD } from './stage02Layout.js';
+import { drawJungleTerrain } from './stage02View.js';
 
-const WIDTH = 1200;
-const HEIGHT = 660;
-const GROUND = 600;
+const { width: WIDTH, height: HEIGHT, trailY: GROUND } = WORLD;
 const STANDARD_ABILITIES = { jumpSpeed: 500 };
 export const STAGE2_BACKGROUND = '/assets/images/stage2/stage2-background.png';
 
@@ -34,35 +34,51 @@ function drawBackground(ctx) {
   );
 }
 
+function spawnPlayer(id, character, x, surface) {
+  const player = new Player(
+    id,
+    character,
+    { x, y: surface.y - PLAYER_HEIGHT },
+    { ...STANDARD_ABILITIES },
+  );
+  player.grounded = true;
+  return player;
+}
+
 export class Stage2 {
   id = 2;
 
   constructor(characters, _random, session = createSessionState()) {
     this.session = session;
     this.complete = false;
-    this.solids = [{ x: 0, y: GROUND, w: WIDTH, h: HEIGHT - GROUND }];
-    this.players = characters.map((character, index) => {
-      const player = new Player(
-        index,
-        character,
-        { x: 156 + index * 70, y: GROUND - PLAYER_HEIGHT },
-        { ...STANDARD_ABILITIES },
-      );
-      player.grounded = true;
-      return player;
-    });
+    this.time = 0;
+    this.motion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+    this.solids = Object.values(LAND);
+    this.players = characters.map((character, index) =>
+      spawnPlayer(index, character, 156 + index * 70, LAND.entrance),
+    );
     this.health = this.players.map(() => ({ value: 4, max: 4, invulnerable: 0 }));
   }
 
   update(dt, inputs) {
+    this.time += dt;
     this.players.forEach((player, index) => {
       const { move, jump, crouch } = inputs[index];
       player.update({ move, jump, crouch }, dt, this.solids, WIDTH);
+      if (player.y >= HEIGHT) {
+        this.players[index] = spawnPlayer(
+          index,
+          player.character,
+          LAND.nearBank.x + 12 + index * 38,
+          LAND.nearBank,
+        );
+      }
     });
   }
 
   draw(ctx, debug = false) {
     drawBackground(ctx);
+    drawJungleTerrain(ctx, this.motion?.matches ? 0 : this.time);
     ctx.save();
     ctx.globalAlpha *= this.opening?.playerOpacity ?? 1;
     this.players.forEach((player) => player.draw(ctx));

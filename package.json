@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "stage1": "node scripts/dev-stage.mjs 1",
+    "stage2": "node scripts/dev-stage.mjs 2",
+    "stage2:diamond": "node scripts/dev-stage.mjs 2 --diamond",
+    "stage3": "node scripts/dev-stage.mjs 3",
+    "stage3:diamond": "node scripts/dev-stage.mjs 3 --diamond",
     "clean": "node -e \"for (const path of ['dist', 'node_modules/.vite']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
     "reinstall": "npm ci",
     "build": "vite build",

@@ -4,6 +4,7 @@ import { GameState, State } from '../src/core/gameState.js';
 import { StageManager } from '../src/core/stageManager.js';
 import { CHARACTERS } from '../src/entities/player/characters.js';
 import { createUI } from '../src/ui/ui.js';
+import { jungleEntrance } from '../src/ui/screens/completeScreen.js';
 import { installUiDom } from '../test-support/uiDom.js';
 import { HomepageMusic } from '../src/core/audio.js';
 import { musicEnvironment } from '../test-support/musicEnvironment.js';
@@ -55,7 +56,7 @@ function startGame(app) {
   app.click('play');
 }
 
-test('completion opens the jungle briefing and starts or restarts Stage 2 with the same crew and session', (t) => {
+function installAnimationFrame(t) {
   let nextFrame;
   const saved = ['requestAnimationFrame', 'cancelAnimationFrame'].map((name) => [
     name,
@@ -74,6 +75,116 @@ test('completion opens the jungle briefing and starts or restarts Stage 2 with t
       else delete globalThis[name];
     }
   });
+  return (milliseconds) => nextFrame(performance.now() + milliseconds);
+}
+
+test('the jungle crew lands on the button and ground, stays apart and waits at the portal', () => {
+  for (const config of [
+    {
+      button: { left: 70, right: 239, top: 332 },
+      ground: 505,
+      scale: 1.25,
+      spriteWidths: [46, 51],
+      waitAt: [860, 922],
+    },
+    {
+      button: { left: 35, right: 204, top: 250 },
+      ground: 445,
+      scale: 0.65,
+      spriteWidths: [25, 29],
+      waitAt: [186, 227],
+    },
+    {
+      button: { left: 34, right: 203, top: 250 },
+      ground: 443,
+      scale: 0.48,
+      spriteWidths: [19, 21],
+      waitAt: [129, 169],
+    },
+  ]) {
+    const { travelers, duration, edge } = jungleEntrance(config);
+    const [rear, lead] = travelers;
+    assert.equal(rear.sample(0.1), null);
+    assert.ok(lead.sample(0.2).y > 3 * lead.sample(0.1).y, 'fall accelerates');
+    const bothIdle = (time) =>
+      travelers.every(({ sample }) => {
+        const pose = sample(time);
+        return pose?.grounded && pose.y === config.button.top && pose.distance === 0;
+      });
+    assert.ok(Array.from({ length: 600 }, (_, tick) => tick / 200).some(bothIdle));
+    for (const [i, traveler] of travelers.entries()) {
+      const poses = Array.from({ length: Math.ceil(duration * 200) }, (_, frame) =>
+        traveler.sample(frame / 200),
+      ).filter(Boolean);
+      const upperLanding = poses.findIndex((pose) => pose.grounded && pose.y === config.button.top);
+      const jump = poses.findIndex((pose, i) => i > upperLanding && !pose.grounded);
+      assert.ok(upperLanding > 0 && jump > upperLanding);
+      const landingX = poses[upperLanding].x;
+      assert.ok(landingX - config.spriteWidths[i] / 2 >= config.button.left);
+      assert.ok(landingX + config.spriteWidths[i] / 2 <= config.button.right);
+      assert.ok(poses.slice(upperLanding, jump).some((pose) => pose.distance > 0));
+      assert.ok(poses[upperLanding].x < edge && poses[jump].x >= edge);
+      assert.ok(
+        poses
+          .slice(jump)
+          .some((pose) => pose.grounded && pose.y === config.ground && pose.distance > 0),
+      );
+      assert.ok(
+        poses.every((pose, i) => pose.y <= config.ground && (!i || pose.x >= poses[i - 1].x)),
+      );
+      assert.equal(traveler.sample(duration + 1).distance, 0);
+    }
+    assert.deepEqual(
+      travelers.map((traveler) => traveler.sample(duration).x),
+      config.waitAt,
+    );
+    for (let time = 0.26; time <= duration; time += 0.01) {
+      assert.ok(
+        lead.sample(time).x - rear.sample(time).x >=
+          (config.spriteWidths[0] + config.spriteWidths[1]) / 2,
+      );
+    }
+  }
+});
+
+test('pre-stage screens open with the default crew before any stage is loaded', (t) => {
+  const animate = installAnimationFrame(t);
+  const app = setup(t);
+  app.ui.prepareStage(1);
+  assert.match(app.screen.innerHTML, /CHOOSE YOUR LOOK/);
+  assert.equal(app.stage, undefined);
+  assert.ok(app.game.hidden);
+  app.click('character-2');
+  app.click('next');
+  assert.match(app.screen.innerHTML, /data-stage="1"/);
+  assert.match(app.screen.innerHTML, /data-character="max"/);
+  assert.equal(app.stage, undefined);
+  assert.ok(app.game.hidden);
+
+  app.selected[0] = 0;
+  app.ui.prepareStage(2);
+  assert.match(app.screen.innerHTML, /STAGE 1 COMPLETED!/);
+  assert.doesNotMatch(app.screen.innerHTML, /Zijn jullie klaar voor Stage 2/);
+  assert.match(app.screen.innerHTML, /Nog een ronde/);
+  assert.match(app.screen.innerHTML, /Hoofdmenu/);
+  assert.equal(app.stage, undefined);
+  app.click('start-stage-2');
+  animate(100);
+  assert.equal(app.state.current, State.STAGE_COMPLETE);
+  animate(400);
+  assert.match(app.screen.innerHTML, /data-stage="2"/);
+  assert.equal(app.stage, undefined);
+  app.click('play');
+  assert.equal(app.stage.id, 2);
+  assert.deepEqual(
+    app.stage.players.map((p) => p.character),
+    CHARACTERS.slice(0, 2),
+  );
+  assert.equal(app.stage.session.gems.blue, false);
+});
+
+test('completion opens the jungle briefing and starts or restarts Stage 2 with the same crew and session', (t) => {
+  const animate = installAnimationFrame(t);
   const app = setup(t);
   app.click('start');
   app.click('character-2');
@@ -82,16 +193,18 @@ test('completion opens the jungle briefing and starts or restarts Stage 2 with t
   const facility = app.stage;
   facility.session.gems.blue = true;
   facility.complete = true;
-  app.state.set(State.STAGE_COMPLETE);
+  app.ui.prepareStage(2);
   assert.match(app.screen.innerHTML, /STAGE 1 COMPLETED!/);
   assert.match(app.screen.innerHTML, /Jullie hebben Stage 1 gehaald!/);
   const introButton = app.document.getElementById('start-stage-2');
   introButton.click();
   introButton.click();
   assert.equal(introButton.disabled, true);
-  nextFrame(performance.now() + 100);
+  app.ui.render();
+  assert.equal(app.document.getElementById('start-stage-2'), introButton);
+  animate(100);
   assert.equal(app.state.current, State.STAGE_COMPLETE);
-  nextFrame(performance.now() + 400);
+  animate(400);
   assert.match(app.screen.innerHTML, /TEAM UP/);
   assert.match(app.screen.innerHTML, /data-character="max"/);
   assert.equal((app.screen.innerHTML.match(/To be determined/g) ?? []).length, 4);
@@ -99,7 +212,7 @@ test('completion opens the jungle briefing and starts or restarts Stage 2 with t
   app.click('back');
   assert.equal(app.state.current, State.STAGE_COMPLETE);
   app.click('start-stage-2');
-  nextFrame(performance.now() + 400);
+  animate(400);
   app.ui.navigate({ confirm: true });
   assert.equal(app.state.current, State.PLAYING);
   assert.equal(app.stage.id, 2);

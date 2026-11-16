@@ -14,6 +14,10 @@ import { systemMenuView } from './screens/systemMenuScreen.js';
 import { homepageMusic as defaultHomepageMusic } from '../core/audio.js';
 import { getStageBriefing } from './stageBriefings.js';
 
+const stageTransitions = {
+  2: { view: completeView, animate: animateJungleIntro },
+};
+
 export function directionalTarget(nodes, current, direction) {
   if (!nodes.includes(current)) return nodes[0];
   const origin = current.getBoundingClientRect();
@@ -148,6 +152,7 @@ export function createUI({
     )?.focus({ preventScroll: true });
   }
   function render() {
+    if (intro && state.current === State.STAGE_COMPLETE) return;
     // Enforce the exact home view before any background/layout render can fail.
     homepageMusic.setActive(state.current === State.MENU && !panel);
     syncMusicToggle();
@@ -192,26 +197,29 @@ export function createUI({
     else if (state.current === State.SETUP) renderSetup();
     else if (paused) renderPause();
     else if (complete) {
-      screen.innerHTML = completeView();
+      const stageId = setupStage;
+      const transition = stageTransitions[stageId];
+      screen.innerHTML = transition.view();
       const completedStage = getStage();
-      intro = animateJungleIntro(
+      intro = transition.animate(
         document.getElementById('jungle-intro-scene'),
         document.getElementById('jungle-intro-crew'),
-        completedStage.players.map(({ character }) => character),
+        completedStage?.players.map(({ character }) => character) ??
+          selected.map((i) => CHARACTERS[i]),
         app,
       );
-      const startButton = document.getElementById('start-stage-2');
-      bind('start-stage-2', () => {
+      const startId = `start-stage-${stageId}`;
+      const startButton = document.getElementById(startId);
+      bind(startId, () => {
         if (startButton.disabled || state.current !== State.STAGE_COMPLETE) return;
         startButton.disabled = true;
         intro.teleport(() => {
           if (state.current !== State.STAGE_COMPLETE || getStage() !== completedStage) return;
-          setupStage = 2;
           setupStep = 1;
           state.set(State.SETUP);
         });
       });
-      bind('replay', () => start(1));
+      bind('replay', () => start(stageId - 1));
       bind('main-menu', mainMenu);
     }
     refreshAvatars();
@@ -225,6 +233,11 @@ export function createUI({
     const sheet = screen.querySelector('.sheet');
     if (sheet) resizeObserver.observe(sheet);
     focusReturnAction();
+  }
+  function prepareStage(stageId) {
+    setupStage = stageId;
+    setupStep = 0;
+    state.set(stageId === 1 ? State.SETUP : State.STAGE_COMPLETE);
   }
   function mainMenu() {
     panel = null;
@@ -243,11 +256,7 @@ export function createUI({
         if (index === phrase.length) clearInterval(typingTimer);
       }, 42);
     }
-    bind('start', () => {
-      setupStage = 1;
-      setupStep = 0;
-      state.set(State.SETUP);
-    });
+    bind('start', () => prepareStage(1));
     bind('controls', () => open('controls'));
     bind('controllers', () => open('controllers'));
   }
@@ -279,7 +288,7 @@ export function createUI({
       bind('play', () => start(briefing.id));
     }
     bind('back', () => {
-      if (setupStage === 2) state.set(State.STAGE_COMPLETE);
+      if (setupStage !== 1) prepareStage(setupStage);
       else if (setupStep === 0) mainMenu();
       else {
         setupStep--;
@@ -577,6 +586,7 @@ export function createUI({
   return {
     render,
     closePanel,
+    prepareStage,
     navigate({ direction, confirm, back, menu }) {
       if (direction || confirm) screen.classList.toggle('navigating', true);
       if (panel === 'controllers') refreshPads();

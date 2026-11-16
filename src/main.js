@@ -129,7 +129,7 @@ function updateSimulation() {
         a.shoot = false;
       });
       if (stage.complete) {
-        state.set(State.STAGE_COMPLETE);
+        ui.prepareStage(stage.id + 1);
         break;
       }
     }
@@ -219,5 +219,9 @@ function frame(time) {
   requestAnimationFrame(frame);
 }
 document.querySelector('#app').hidden = false;
-ui.render();
+const devLaunch = import.meta.env.DEV ? import.meta.env.SYNC_DEV_LAUNCH : undefined;
+if (devLaunch) {
+  for (const gem of devLaunch.gems) manager.session.gems[gem] = true;
+  ui.prepareStage(devLaunch.stageId);
+} else ui.render();
 requestAnimationFrame(frame);

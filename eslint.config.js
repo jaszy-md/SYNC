@@ -10,7 +10,7 @@ export default [
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['test/**/*.js', 'test-support/**/*.js', '*.config.js'],
+    files: ['test/**/*.js', 'test-support/**/*.js', 'scripts/*.mjs', '*.config.js'],
     languageOptions: { globals: globals.node },
   },
   prettier,

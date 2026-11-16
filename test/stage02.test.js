@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Stage2, STAGE2_BACKGROUND } from '../src/stages/stage02/stage02.js';
-import { CROSSING, LAND } from '../src/stages/stage02/stage02Layout.js';
+import { CROSSING, LAND, QUICKSAND } from '../src/stages/stage02/stage02Layout.js';
 import {
   HINT_REACH,
   MAX_LAUNCH_X,
@@ -81,103 +81,173 @@ test('both jungle players retain the same neutral movement, jump and facing', ()
   assert.equal(stage.complete, false);
 });
 
-test('both players can land on every mandatory parkour step and the upper perch', () => {
-  const stage = new Stage2(CHARACTERS.slice(2, 4));
-  for (const player of stage.players) {
-    advance(stage, player.id, 278);
-    advance(stage, player.id, 346, true);
-    assertOn(player, LAND.low);
-    advance(stage, player.id, 385);
-    advance(stage, player.id, 446, true);
-    assertOn(player, LAND.high);
-    advance(stage, player.id, 480);
-    advance(stage, player.id, 616, true);
-    assertOn(player, LAND.lower);
-    advance(stage, player.id, 643);
-    advance(stage, player.id, 710, true);
-    assertOn(player, LAND.nearBank);
-    advance(stage, player.id, 760, true);
-    assertOn(player, LAND.perch);
-  }
-});
+function stepPlayer(stage, id, action = {}) {
+  stage.update(
+    STEP,
+    [0, 1].map((i) => (i === id ? { ...idle(), ...action } : idle())),
+  );
+}
 
-test('a missed parkour jump can be recovered from the basin via the foothold', () => {
-  const stage = new Stage2(CHARACTERS.slice(0, 2));
-  const player = stage.players[0];
-  Object.assign(player, { x: 478, y: LAND.high.y - player.h });
-  advance(stage, player.id, 518);
-  assertOn(player, LAND.basin);
-  advance(stage, player.id, 561, true);
-  assertOn(player, LAND.foothold);
-  advance(stage, player.id, 611, true);
-  assertOn(player, LAND.lower);
-});
-
-test('both players must jump from the log to grab the swayable vine', () => {
-  const stage = new Stage2(CHARACTERS.slice(0, 2));
+function grabFromLog(stage, id) {
+  const player = stage.players[id];
+  const { vine } = stage;
+  advance(stage, id, 278);
+  advance(stage, id, 374, true);
+  advance(stage, id, Math.min(414, Math.round(vine.grip.x - 6)));
+  assertOn(player, LAND.low);
+  assert.equal(vine.canGrab(player, stage.solids), false);
   const bindings = interactionBindings([null, null]);
-  const [first, second] = stage.players;
-  const vine = stage.vine;
-  const step = (id, action) =>
-    stage.update(
-      STEP,
-      [0, 1].map((i) => (i === id ? { ...idle(), ...action } : idle())),
-    );
-  advance(stage, 0, 285);
-  const originalX = vine.grip.x;
-  for (let i = 0; i < 95; i++) {
-    step(first.id, { jump: i === 0, move: i < 42 ? 1 : 0 });
-    assert.equal(vine.canGrab(first, stage.solids), false);
+  assert.ok(stage.getVineHints(bindings).some((hint) => hint.player === player));
+  stepPlayer(stage, id, { jump: true });
+  for (let i = 0; i < 50 && !vine.canGrab(player, stage.solids); i++) stepPlayer(stage, id);
+  stepPlayer(stage, id, { interact: true });
+  assert.equal(player.hanging, vine);
+  assert.equal(player.y + 12, vine.grip.y);
+  return player;
+}
+
+test('a running jump from the very edge falls short and sinks before a local respawn', () => {
+  for (const id of [0, 1]) {
+    const stage = new Stage2(CHARACTERS.slice(0, 2));
+    stage.session.gems.blue = true;
+    const player = stage.players[id];
+    const partner = stage.players[1 - id];
+    const partnerPosition = [partner.x, partner.y];
+    const spawnX = player.x;
+    const health = stage.health[id];
+    advance(stage, id, 278);
+    advance(stage, id, 376, true);
+    advance(stage, id, QUICKSAND.x - 1);
+    assertOn(player, LAND.low);
+    stepPlayer(stage, id, { move: 1, jump: true });
+    for (let i = 0; i < 110 && !stage.sinking[id]; i++) stepPlayer(stage, id, { move: 1 });
+    assert.ok(stage.sinking[id]);
+    assert.equal(player.y + player.h, QUICKSAND.y);
+    const { x, y } = player;
+    for (let i = 0; i < 45; i++) stepPlayer(stage, id, { move: 1, jump: true, interact: true });
+    assert.equal(player.x, x);
+    assert.ok(player.y > y + 15 && player.y < y + player.h);
+    assert.equal(health.value, 4);
+    assert.equal(stage.players[id], player);
+    for (let i = 0; i < 160 && !stage.respawns[id]; i++) stepPlayer(stage, id);
+    assert.ok(stage.respawns[id]?.active);
+    assert.equal(health.value, 3);
+    assert.equal(stage.players[id].x, spawnX);
+    assertOn(stage.players[id], LAND.entrance);
+    for (let i = 0; i < 120; i++) stepPlayer(stage, id);
+    assert.equal(health.value, 3);
+    assert.equal(stage.respawns[id], null);
+    assert.equal(stage.sinking[id], null);
+    assert.equal(stage.health[1 - id].value, 4);
+    assert.equal(stage.players[1 - id], partner);
+    assert.deepEqual([partner.x, partner.y], partnerPosition);
+    assert.equal(stage.session.gems.blue, true);
+    assert.equal(stage.complete, false);
   }
-  assert.notEqual(vine.grip.x, originalX);
-  assertOn(first, LAND.low);
-  advance(stage, second.id, 278);
-  advance(stage, second.id, 368, true);
-  const grab = (player) => {
-    advance(stage, player.id, Math.round(vine.grip.x - 6));
-    assert.equal(vine.canGrab(player, stage.solids), false);
-    assert.ok(
-      stage
-        .getVineHints(bindings)
-        .some((hint) => hint.player === player && hint.binding.label === bindings[player.id].label),
-    );
-    step(player.id, { jump: true });
-    for (let i = 0; i < 50 && !vine.canGrab(player, stage.solids); i++) step(player.id, {});
-    assert.ok(
-      stage
-        .getVineHints(bindings)
-        .some((hint) => hint.player === player && hint.object === vine.grip),
-    );
-    step(player.id, { interact: true });
+});
+
+test('Player 2 reaches the far shore from the log using only jump, grab and swing inputs', () => {
+  const stage = new Stage2(CHARACTERS.slice(2, 4).reverse());
+  const { vine } = stage;
+  const player = grabFromLog(stage, 1);
+  for (let i = 0; i < 140 && !(vine.angle > 0.25 && vine.angularVelocity > 0.35); i++) {
+    stepPlayer(stage, 1, { move: 1 });
+    assert.equal(player.y + 12, vine.grip.y);
+  }
+  assert.ok(vine.angle > 0.25 && vine.angularVelocity > 0.35);
+  stepPlayer(stage, 1, { move: 1, jump: true });
+  assert.equal(player.hanging, null);
+  assert.ok(player.swingMomentum > 0 && player.vy < 0);
+  assert.ok(player.vx > 0 && player.vx <= MAX_LAUNCH_X);
+  for (let i = 0; i < 140 && !player.grounded; i++) stepPlayer(stage, 1, { move: 1 });
+  assertOn(player, LAND.lower);
+  advance(stage, 1, 646);
+  advance(stage, 1, 710, true);
+  assertOn(player, LAND.nearBank);
+  advance(stage, 1, 760, true);
+  assertOn(player, LAND.perch);
+});
+
+test('Player 1 loses grip on a right swing and speaks only after her first quicksand respawn', () => {
+  const stage = new Stage2(CHARACTERS.slice(2, 4));
+  stage.motion = { matches: true };
+  stage.session.gems.blue = true;
+  const partner = stage.players[1];
+  const partnerPosition = [partner.x, partner.y];
+  const health = stage.health[0];
+  const runAttempt = () => {
+    const player = grabFromLog(stage, 0);
+    for (let i = 0; i < 50; i++) stepPlayer(stage, 0);
+    assert.equal(player.hanging, stage.vine);
+    assert.equal(stage.vineInput[0].slipAt, 0);
+    for (let i = 0; i < 160 && stage.vine.angle > -0.18; i++) stepPlayer(stage, 0, { move: -1 });
+    assert.ok(stage.vine.angle <= -0.18);
+    assert.equal(player.hanging, stage.vine);
+    assert.equal(stage.vineInput[0].slipAt, 0);
+
+    const earlierSpeech = stage.slipMessage;
+    for (let i = 0; i < 280 && !stage.vineInput[0].slipAt; i++) stepPlayer(stage, 0, { move: 1 });
+    assert.ok(stage.vineInput[0].slipAt > stage.time);
+    assert.ok(stage.vine.angle > 0 && stage.vine.angularVelocity > 0);
+    assert.equal(player.y + 12, stage.vine.grip.y);
+    for (let i = 0; i < 25 && player.hanging; i++)
+      stepPlayer(stage, 0, { move: -1, jump: true, interact: true });
+    assert.equal(player.hanging, null);
+    assert.ok(player.x >= QUICKSAND.x && player.y + player.h < QUICKSAND.y);
+    assert.ok(player.vy > 0, 'the player starts falling under gravity');
+    assert.equal(stage.sinking[0], null);
+    assert.equal(stage.slipMessage, earlierSpeech);
+
+    const before = health.value;
+    for (let i = 0; i < 80 && !stage.sinking[0]; i++) {
+      stepPlayer(stage, 0, { move: -1, jump: true, interact: true });
+      assert.equal(stage.slipMessage, earlierSpeech);
+    }
+    assert.ok(stage.sinking[0]);
+    assert.equal(player.y + player.h, QUICKSAND.y);
+    for (let i = 0; i < 30; i++) stepPlayer(stage, 0, { move: 1, jump: true });
+    assert.equal(health.value, before);
+    assert.ok(player.y + player.h > QUICKSAND.y);
+    for (let i = 0; i < 140 && !stage.respawns[0]; i++) stepPlayer(stage, 0);
+    assert.ok(stage.respawns[0]?.active);
+    assert.equal(health.value, before - 1);
+    assert.equal(stage.slipMessage, earlierSpeech);
+    while (stage.respawns[0]?.active) {
+      assert.equal(stage.slipMessage, earlierSpeech);
+      stepPlayer(stage, 0);
+    }
+    assertOn(stage.players[0], LAND.entrance);
+    assert.deepEqual([partner.x, partner.y], partnerPosition);
+    assert.equal(stage.players[1], partner);
+    assert.equal(stage.health[1].value, 4);
+    assert.equal(stage.session.gems.blue, true);
   };
-  grab(first);
-  assert.equal(first.hanging, stage.vine);
-  assert.ok(!second.hanging);
-  assert.deepEqual(stage.getVineHints(bindings), []);
-  step(first.id, { interact: true });
-  for (let i = 0; i < 70; i++) step(first.id, { interactHeld: true });
-  assert.equal(first.hanging, null);
-  assertOn(first, LAND.low);
-  grab(second);
-  assert.equal(second.hanging, stage.vine);
-  for (let i = 0; i < 120; i++) {
-    step(second.id, { move: 1 });
-    assert.equal(second.y + 12, vine.grip.y);
-    assert.equal(second.vy, 0);
-  }
-  for (let i = 0; i < 900; i++) step(second.id, {});
-  assert.ok(Math.abs(vine.angle) < 0.03);
-  for (let i = 0; i < 34; i++) step(second.id, { move: 1 });
-  assert.ok(vine.angularVelocity > 0.3);
-  step(second.id, { jump: true });
-  assert.equal(second.hanging, null);
-  assert.ok(second.vx > 0 && second.vx <= MAX_LAUNCH_X && second.vy < 0);
-  const momentum = second.swingMomentum;
-  step(second.id, { interactHeld: true, move: -0.2 });
-  assert.ok(second.swingMomentum < momentum && second.vx < momentum);
-  for (let i = 0; i < 130; i++) step(second.id, { interactHeld: true });
-  assert.ok(second.grounded && !second.hanging);
-  assert.equal(second.swingMomentum, 0);
+  runAttempt();
+  const reply = stage.slipMessage;
+  assert.equal(reply.index, 0);
+  assert.equal(reply.until - stage.time, 3);
+  while (stage.time < reply.until + STEP) stepPlayer(stage, 0);
+  runAttempt();
+  assert.equal(stage.slipMessage, reply);
+  assert.ok(reply.until < stage.time);
+});
+
+test('the Ancient Crossing keeps its existing coordinates and collision surfaces', () => {
+  const stage = new Stage2(CHARACTERS.slice(0, 2));
+  assert.deepEqual(
+    stage.solids.filter(({ x, w }) => x + w > 699),
+    [
+      { x: 688, y: 483, w: 164, h: 177 },
+      { x: 749, y: 415, w: 66, h: 11 },
+      { x: 1066, y: 475, w: 134, h: 185 },
+    ],
+  );
+  assert.deepEqual(CROSSING, {
+    left: 852,
+    right: 1066,
+    mechanism: { x: 815, y: 483 },
+    vine: { x: 784, y: 272, length: 112 },
+  });
 });
 
 test('an early press is consumed on approach during ascent, descent, and horizontal travel', () => {
@@ -188,7 +258,7 @@ test('an early press is consumed on approach during ascent, descent, and horizon
   ]) {
     const stage = new Stage2(CHARACTERS.slice(0, 2));
     stage.motion = { matches: true };
-    const player = stage.players[0];
+    const player = stage.players[1];
     const { vine } = stage;
     Object.assign(player, {
       x: vine.grip.x - 6 + dx,
@@ -197,14 +267,13 @@ test('an early press is consumed on approach during ascent, descent, and horizon
       grounded: false,
     });
     assert.equal(vine.canGrab(player, stage.solids), false);
-    stage.update(STEP, [{ ...idle(), move, interact: true }, idle()]);
+    stepPlayer(stage, 1, { move, interact: true });
     assert.ok(!player.hanging);
-    for (let i = 0; i < 15 && !player.hanging; i++)
-      stage.update(STEP, [{ ...idle(), move }, idle()]);
+    for (let i = 0; i < 15 && !player.hanging; i++) stepPlayer(stage, 1, { move });
     assert.equal(player.hanging, vine);
     assert.equal(player.y + 12, vine.grip.y);
-    stage.update(STEP, [{ ...idle(), interact: true }, idle()]);
-    stage.update(STEP, [{ ...idle(), interact: true }, idle()]);
+    stepPlayer(stage, 1, { interact: true });
+    stepPlayer(stage, 1, { interact: true });
     assert.equal(player.hanging, null, 'an immediate second press after release does not regrab');
   }
 });
@@ -286,7 +355,7 @@ test('a held direction swings through both sides and timed input builds more spe
 test('release uses both tangent components and extends a jump past the normal range', () => {
   for (const direction of [-1, 1]) {
     const stage = new Stage2(CHARACTERS.slice(0, 2));
-    const player = stage.players[0];
+    const player = stage.players[1];
     const { vine } = stage;
     vine.angle = direction * 0.22;
     Object.assign(vine.grip, vine.tipAt(vine.angle));
@@ -295,17 +364,17 @@ test('release uses both tangent components and extends a jump past the normal ra
     vine.angularVelocity = direction * 1.9;
     const startX = player.x;
     const baseline = new Stage2(CHARACTERS.slice(0, 2));
-    const walker = baseline.players[0];
+    const walker = baseline.players[1];
     Object.assign(walker, { x: startX, y: player.y, grounded: true });
-    baseline.update(STEP, [{ ...idle(), jump: true, move: direction }, idle()]);
+    stepPlayer(baseline, 1, { jump: true, move: direction });
     for (let i = 0; i < 120 && !walker.grounded; i++) {
-      baseline.update(STEP, [{ ...idle(), move: direction }, idle()]);
+      stepPlayer(baseline, 1, { move: direction });
     }
-    stage.update(STEP, [{ ...idle(), jump: true, move: -direction }, idle()]);
+    stepPlayer(stage, 1, { jump: true, move: -direction });
     assert.equal(Math.sign(player.vx), direction, 'opposite input does not reverse the release');
     assert.ok(player.vy < -500 + 1600 * STEP, 'upward swing adds to the launch');
     for (let i = 0; i < 120 && !player.grounded; i++) {
-      stage.update(STEP, [{ ...idle(), move: direction }, idle()]);
+      stepPlayer(stage, 1, { move: direction });
     }
     assert.ok(player.grounded);
     assert.ok(

@@ -1,3 +1,4 @@
+import { drawSpeechBubble } from '../../../ui/components/speechBubble.js';
 import { near, overlaps } from '../../../core/physics/collision.js';
 import { moveBody } from '../../../core/physics/movement.js';
 import { stage01LayoutConfig } from '../stage01LayoutConfig.js';
@@ -286,39 +287,9 @@ export class EnergyBlaster {
       ctx.fillRect(x + 5, y + 3 + lift, 3, 3);
       ctx.fillRect(x + w + 3, y + 2 + Math.sin(this.stage.time * 5) * 4, 2, 2);
     }
-    ctx.shadowBlur = 0;
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     for (const player of this.stage.players) {
       const bubble = this.speech.get(player.id);
-      if (!bubble) continue;
-      ctx.globalAlpha = bubble.opacity;
-      const lines = bubble.text.split(' ').reduce((result, word) => {
-        const last = result.length - 1;
-        if (last < 0 || result[last].length + word.length + 1 > 22) result.push(word);
-        else result[last] += ' ' + word;
-        return result;
-      }, []);
-      const width = 170;
-      const height = lines.length * 16 + 6;
-      const x = Math.max(
-        4,
-        Math.min(stage01Config.width - width - 4, player.x + player.w / 2 - width / 2),
-      );
-      const y = Math.max(4, Math.min(stage01Config.height - height - 10, player.y - height - 14));
-      ctx.fillStyle = '#0c202bee';
-      ctx.fillRect(x, y, width, height);
-      ctx.strokeStyle = '#8cbdbb';
-      ctx.strokeRect(x, y, width, height);
-      const tailX = Math.max(x + 8, Math.min(x + width - 12, player.x + player.w / 2));
-      ctx.fillStyle = '#8cbdbb';
-      ctx.fillRect(tailX, y + height, 6, 3);
-      ctx.fillRect(tailX, y + height + 3, 3, 3);
-      ctx.fillStyle = '#e4f8ef';
-      lines.forEach((line, index) =>
-        ctx.fillText(line, x + width / 2, y + 11 + index * 16, width - 12),
-      );
+      if (bubble) drawSpeechBubble(ctx, player, bubble.text, bubble.opacity, stage01Config);
     }
     ctx.restore();
   }

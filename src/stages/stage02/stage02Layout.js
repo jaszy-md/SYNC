@@ -5,9 +5,6 @@ export const WORLD = { width: 1200, height: 660, trailY: 600 };
 export const LAND = {
   entrance: { x: 0, y: WORLD.trailY, w: 320, h: 60 },
   low: { x: 320, y: 561, w: 100, h: 99 },
-  high: { x: 420, y: 507, w: 88, h: 153 },
-  basin: { x: 508, y: 620, w: 47, h: 40 },
-  foothold: { x: 555, y: 576, w: 37, h: 84 },
   lower: { x: 592, y: 531, w: 96, h: 129 },
   nearBank: { x: 688, y: 483, w: 164, h: 177 },
   perch: { x: 749, y: 415, w: 66, h: 11 },
@@ -21,4 +18,7 @@ export const CROSSING = {
   vine: { x: 784, y: 272, length: 112 },
 };
 
-export const PARKOUR_VINE = { x: 377, y: 255, length: 190 };
+const logEdge = LAND.low.x + LAND.low.w;
+// The 172 px gap and 30 px higher shore exceed a running jump, including player width.
+export const QUICKSAND = { x: logEdge, y: 588, w: LAND.lower.x - logEdge };
+export const PARKOUR_VINE = { x: logEdge - 10, y: 255, length: 190, swingPlayerId: 1 };

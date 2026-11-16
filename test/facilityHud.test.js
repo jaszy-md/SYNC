@@ -131,6 +131,10 @@ test('jungle reuses the map and Mica with neutral speech and accumulated gems', 
   nodes.get('#helper').click();
   assert.match(nodes.get('#helper-announcement').textContent, /Jungleverbinding actief/);
   assert.equal(hud.speechVisible, true);
+  const [player] = stage.players;
+  Object.assign(player, { x: stage.vine.grip.x - 6, y: stage.vine.grip.y + 40 });
+  nodes.get('#helper').click();
+  assert.match(nodes.get('#helper-announcement').textContent, /Spring op het juiste moment/);
   nodes.get('#map').click();
   assert.equal(state.current, State.MAP);
   assert.equal(nodes.get('#facility-map').open, true);

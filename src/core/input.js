@@ -14,11 +14,12 @@ export const SHOOT_KEYS = ['KeyF', 'ControlRight'];
 export const GAMEPAD_SHOOT = { button: 2, trigger: 7, interact: 4 };
 
 export function controllerButtons(id = '') {
-  if (/nintendo|switch|057e/i.test(id)) return { west: 'Y', trigger: 'ZR', interact: 'L' };
+  if (/nintendo|switch|057e/i.test(id))
+    return { west: 'Y', trigger: 'ZR', interact: 'L', jump: 'B' };
   if (/playstation|dualshock|dualsense|sony|054c/i.test(id))
-    return { west: '□', trigger: 'R2', interact: 'L1' };
-  if (/xbox|xinput|045e/i.test(id)) return { west: 'X', trigger: 'RT', interact: 'LB' };
-  return { west: 'X', trigger: 'rechter trigger', interact: 'LB', unknown: true };
+    return { west: '□', trigger: 'R2', interact: 'L1', jump: '✕' };
+  if (/xbox|xinput|045e/i.test(id)) return { west: 'X', trigger: 'RT', interact: 'LB', jump: 'A' };
+  return { west: 'X', trigger: 'rechter trigger', interact: 'LB', jump: 'A', unknown: true };
 }
 
 export function shootInstruction(method = { type: 'keyboard', layout: 1 }) {
@@ -29,17 +30,26 @@ export function shootInstruction(method = { type: 'keyboard', layout: 1 }) {
 }
 
 export function interactionBindings(assignments, weaponOwner = null, sessions = new Map()) {
-  return inputMethods(assignments).map((method, player) =>
-    method.type === 'controller'
-      ? {
-          kind: 'controller',
-          label:
-            player === weaponOwner
-              ? controllerButtons(sessions.get(method.index)?.id).interact
-              : controllerButtons(sessions.get(method.index)?.id).west,
-        }
-      : { kind: 'keyboard', label: KEYBOARD[method.layout].interact.replace(/^Key/, '') },
-  );
+  return inputMethods(assignments).map((method, player) => {
+    if (method.type === 'controller') {
+      const buttons = controllerButtons(sessions.get(method.index)?.id);
+      return {
+        kind: 'controller',
+        label: player === weaponOwner ? buttons.interact : buttons.west,
+        moveLabel: 'Stick / D-pad',
+        jumpLabel: buttons.jump,
+      };
+    }
+    const keys = KEYBOARD[method.layout];
+    const display = (code) =>
+      ({ ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑' })[code] ?? code.replace(/^Key/, '');
+    return {
+      kind: 'keyboard',
+      label: display(keys.interact),
+      moveLabel: `${display(keys.left)} / ${display(keys.right)}`,
+      jumpLabel: display(keys.jump),
+    };
+  });
 }
 export function inputMethods(assignments) {
   const hasController = assignments.some((index) => index !== null);

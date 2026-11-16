@@ -6,6 +6,7 @@ import {
 } from '../src/entities/player/characterAssets.js';
 import { drawPlayer } from '../src/entities/player/playerRenderer.js';
 import {
+  CROUCH_TRANSITION_MS,
   PLAYER_WIDTH,
   PLAYER_HEIGHT,
   PLAYER_CROUCH_HEIGHT,
@@ -126,7 +127,12 @@ test('all poses share one pixel scale, preserve aspect ratio and remain anchored
     [{ vx: 240, walkElapsedMs: 200 }, 'walk-right.png'],
     [{ grounded: false, facing: 1 }, 'jump.png'],
     [
-      { crouched: true, h: PLAYER_CROUCH_HEIGHT, y: 100 + PLAYER_HEIGHT - PLAYER_CROUCH_HEIGHT },
+      {
+        crouched: true,
+        facing: 1,
+        h: PLAYER_CROUCH_HEIGHT,
+        y: 100 + PLAYER_HEIGHT - PLAYER_CROUCH_HEIGHT,
+      },
       'crouch.png',
     ],
     [{ interactPoseMs: 250, grounded: false, crouched: true }, 'back.png'],
@@ -181,10 +187,96 @@ test('both players retain facing on vertical jumps and turn immediately in the a
         assert.equal(player.facing, move ? Math.sign(move) : before);
         assert.equal(player.grounded, false);
         assert.equal(shouldMirrorSprite('jump', player.facing), player.facing < 0);
-        for (const pose of ['walkLeft', 'walkRight', 'crouch'])
+        assert.equal(shouldMirrorSprite('crouch', player.facing), player.facing < 0);
+        for (const pose of ['walkLeft', 'walkRight'])
           assert.equal(shouldMirrorSprite(pose, player.facing), player.facing > 0);
       }
     }
+  }
+});
+
+test('every hanging sprite rotates and mirrors around the moving vine grip', async (t) => {
+  const previous = globalThis.Image;
+  t.after(() => {
+    globalThis.Image = previous;
+  });
+  globalThis.Image = class {
+    naturalWidth = 500;
+    naturalHeight = 900;
+    set src(path) {
+      this.path = path;
+      this.onload();
+    }
+  };
+  for (const character of CHARACTERS) {
+    const fixture = { ...character, sprites: { jump: `/vine-pose${character.sprites.jump}` } };
+    await preloadCharacterSprites([fixture]);
+    const player = new Player(0, fixture, { x: 100, y: 100 }, { jumpSpeed: 500 });
+    for (const facing of [-1, 1]) {
+      player.facing = facing;
+      for (const angle of [-0.42, 0.21]) {
+        player.hanging = { angle, grip: { x: 382, y: 429 } };
+        const calls = [];
+        const ctx = new Proxy(
+          {},
+          {
+            get:
+              (_, name) =>
+              (...args) =>
+                calls.push([name, ...args]),
+          },
+        );
+        drawPlayer(player, ctx);
+        assert.deepEqual(calls.slice(0, 4), [
+          ['save'],
+          ['translate', 382, 429],
+          ['rotate', facing * 0.35 - angle * 0.36],
+          ['scale', facing, 1],
+        ]);
+        const [, image, x, y, w, h] = calls[4];
+        assert.equal(image.path, fixture.sprites.jump);
+        assert.ok(-x / w >= 0.07 && -x / w <= 0.1);
+        assert.ok(-y / h >= 0.3 && -y / h <= 0.42);
+        assert.deepEqual(calls.at(-1), ['restore']);
+      }
+    }
+  }
+});
+
+test('crouch changes the hitbox immediately and blends a moving pose while keeping foot height', () => {
+  const floor = { x: 0, y: 100, w: 500, h: 40 };
+  const ceiling = { x: 0, y: 48, w: 100, h: 11 };
+  for (const [id, character] of CHARACTERS.entries()) {
+    const player = new Player(
+      id % 2,
+      character,
+      { x: 110, y: floor.y - PLAYER_HEIGHT },
+      { jumpSpeed: 500 },
+    );
+    player.grounded = true;
+    player.update({ ...idle(), move: -1 }, 1 / 120, [floor, ceiling]);
+    player.update({ ...idle(), crouch: true }, 1 / 120, [floor, ceiling]);
+    assert.equal(player.facing, -1);
+    assert.ok(shouldMirrorSprite('crouch', player.facing));
+    assert.equal(player.crouchBlendMs, CROUCH_TRANSITION_MS);
+    assert.equal(player.h, PLAYER_CROUCH_HEIGHT);
+    assert.equal(player.y + player.h, floor.y);
+    for (let i = 0; i < 36; i++)
+      player.update({ ...idle(), crouch: true, move: -1 }, 1 / 120, [floor, ceiling]);
+    assert.equal(player.crouchBlendMs, 0);
+    assert.ok(player.x < ceiling.w);
+    player.update(idle(), 1 / 120, [floor, ceiling]);
+    assert.ok(player.crouched, 'standing expansion waits for overhead clearance');
+    player.update({ ...idle(), crouch: true, move: 1 }, 1 / 120, [floor, ceiling]);
+    assert.equal(player.facing, 1);
+    assert.equal(shouldMirrorSprite('crouch', player.facing), false);
+    for (let i = 0; i < 35; i++) player.update({ ...idle(), move: 1 }, 1 / 120, [floor, ceiling]);
+    assert.equal(player.crouched, false);
+    assert.equal(player.h, PLAYER_HEIGHT);
+    assert.equal(player.y + player.h, floor.y);
+    player.update(idle(), 1 / 120, [floor]);
+    player.update({ ...idle(), crouch: true }, 1 / 120, [floor]);
+    assert.equal(player.crouchBlendMs, 0, 'stationary crouch does not animate a walk');
   }
 });
 

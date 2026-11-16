@@ -2,6 +2,7 @@
 export const PLAYER_WIDTH = 28;
 export const PLAYER_HEIGHT = 56;
 export const PLAYER_CROUCH_HEIGHT = Math.round(PLAYER_HEIGHT * (26 / 46));
+export const CROUCH_TRANSITION_MS = 100;
 
 // Uniform visual scale relative to standing height, including crouched poses.
 export const PLAYER_SPRITE_SCALE = 1.2;

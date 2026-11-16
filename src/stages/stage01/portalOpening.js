@@ -2,9 +2,10 @@ import { stage01Config } from './stage01Config.js';
 
 // Presentation-only entry portal. Replace this renderer with portal assets later.
 export class PortalOpening {
-  constructor() {
+  constructor({ local = false } = {}) {
     this.elapsed = 0;
     this.duration = stage01Config.opening.duration;
+    this.local = local;
   }
   get active() {
     return this.elapsed < this.duration;
@@ -20,9 +21,11 @@ export class PortalOpening {
     const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const t = this.elapsed / this.duration;
     ctx.save();
-    ctx.fillStyle = '#030b17';
-    ctx.globalAlpha = Math.max(0, 1 - this.elapsed / 0.5);
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (!this.local) {
+      ctx.fillStyle = '#030b17';
+      ctx.globalAlpha = Math.max(0, 1 - this.elapsed / 0.5);
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    }
     if (this.elapsed > 0.2) {
       const opacity = Math.min(1, (this.elapsed - 0.2) / 0.25) * Math.min(1, (1 - t) * 4);
       players.forEach((player) => {
@@ -44,7 +47,7 @@ export class PortalOpening {
           }
         }
       });
-      if (!reduced) {
+      if (!reduced && !this.local) {
         ctx.globalAlpha = Math.max(0, 1 - Math.abs(this.elapsed - 0.6) / 0.14) * 0.35;
         ctx.fillStyle = '#c9f5ff';
         ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);

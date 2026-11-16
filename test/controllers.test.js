@@ -8,6 +8,8 @@ import {
   shootInstruction,
 } from '../src/core/input.js';
 import { directionalTarget } from '../src/ui/ui.js';
+import { Stage2 } from '../src/stages/stage02/stage02.js';
+import { CHARACTERS } from '../src/entities/player/characters.js';
 
 const nodeAt = (left, top, width = 80, height = 40) => ({
   getBoundingClientRect: () => ({
@@ -54,6 +56,42 @@ function setup(t, pads) {
     },
   };
 }
+
+test('the jungle vine accepts the mapped keyboard and controller buttons and shows their labels', (t) => {
+  const pad = padAt(0, 'Sony DualSense');
+  const { input, key } = setup(t, [pad]);
+  input.assignments = [null, 0];
+  const stage = new Stage2(CHARACTERS.slice(0, 2));
+  stage.players.forEach((p, i) =>
+    Object.assign(p, {
+      x: stage.vine.grip.x - 6 + i * 4,
+      y: stage.vine.grip.y - 12,
+      grounded: false,
+    }),
+  );
+  const bindings = interactionBindings(input.assignments, null, input.padSessions);
+  assert.deepEqual(
+    stage.getVineHints(bindings).map(({ binding }) => binding.label),
+    ['Enter', '□'],
+  );
+  const step = () => {
+    stage.update(1 / 120, input.sample());
+    input.endFrame();
+  };
+  pad.buttons[2].pressed = true;
+  step();
+  assert.equal(stage.vine.occupant?.id, 1);
+  assert.deepEqual(stage.getVineHints(bindings), []);
+  step();
+  assert.equal(stage.vine.occupant?.id, 1, 'holding the interact button does not drop the player');
+  pad.buttons[0].pressed = true;
+  step();
+  assert.equal(stage.vine.occupant, null);
+  assert.ok(stage.players[1].vy < 0);
+  key('Enter');
+  step();
+  assert.equal(stage.vine.occupant?.id, 0);
+});
 
 test('gameplay keys prevent browser defaults, ignore menus/text entry and clear on blur', (t) => {
   setup(t, []);

@@ -344,7 +344,7 @@ export function createUI({
               : null,
           )
         : [
-            ['Stick / D-pad', 'A / ✕', 'B / ○', 'X / □'],
+            ['Stick / D-pad', 'A / ✕', 'B / ○', jungle ? 'X / □ / Y' : 'X / □'],
             [
               'Stick / D-pad',
               'A / ✕',
@@ -354,7 +354,7 @@ export function createUI({
             ],
           ];
     screen.innerHTML = controlsView(
-      jungle ? rows.map((keys) => keys?.slice(0, 3)) : rows,
+      jungle ? rows.map((keys) => keys?.slice(0, 4)) : rows,
       controlsTab,
       jungle,
     );

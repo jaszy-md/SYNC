@@ -67,7 +67,10 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     if (stage.id === 1) {
       stage.requestHint();
       speak(getStage01Communication(stage));
-    } else speak('Jungleverbinding actief. Jullie kunnen samen op verkenning.');
+    } else
+      speak(
+        stage.getHintMessage?.() ?? 'Jungleverbinding actief. Jullie kunnen samen op verkenning.',
+      );
     restore();
   }
   function openMap() {

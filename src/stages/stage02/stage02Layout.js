@@ -20,3 +20,5 @@ export const CROSSING = {
   mechanism: { x: 815, y: LAND.nearBank.y },
   vine: { x: 784, y: 272, length: 112 },
 };
+
+export const PARKOUR_VINE = { x: 377, y: 255, length: 190 };

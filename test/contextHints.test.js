@@ -6,10 +6,69 @@ import {
   getStage01Hint,
 } from '../src/stages/stage01/hints/stage01Hints.js';
 import { interactionBindings } from '../src/core/input.js';
+import { drawControlHints } from '../src/ui/controlHints.js';
 import { stage01Config } from '../src/stages/stage01/stage01Config.js';
 import { makeStage, placeAt, moveAway, solveSymbols } from '../test-support/stage.js';
 import { energyPuzzleConfig } from '../src/stages/stage01/puzzles/energyPuzzle/energyPuzzleConfig.js';
 const hints = (stage) => getStage01ControlHints(stage, interactionBindings([null, null]));
+
+test('shared hints render single-key circles and longer pills using only the current label', () => {
+  const stage = { time: 0 };
+  const players = [{ id: 0 }, { id: 1 }];
+  const grip = { x: 377, y: 445, w: 0, h: 0 };
+  const calls = [];
+  const ctx = new Proxy(
+    { canvas: { width: 1200 }, measureText: (label) => ({ width: label.length * 6 }) },
+    {
+      get: (target, key) => target[key] ?? ((...args) => calls.push([key, ...args])),
+    },
+  );
+  const draw = (bindings) =>
+    drawControlHints(
+      ctx,
+      stage,
+      bindings.map((binding, id) => ({
+        object: grip,
+        player: players[id],
+        binding,
+        align: 'left',
+      })),
+    );
+  draw(interactionBindings([null, null]));
+  stage.time += 0.05;
+  draw(interactionBindings([null, null]));
+  assert.deepEqual(
+    calls.filter(([name]) => name === 'fillText').map(([, label]) => label),
+    ['E', 'Enter'],
+  );
+  assert.ok(calls.some(([name, x, y, r]) => name === 'arc' && x === 0 && y === 0 && r === 11));
+  assert.ok(calls.some(([name, , , , h, r]) => name === 'roundRect' && h === 22 && r === 11));
+  assert.ok(
+    calls.filter(([name]) => name === 'translate').every(([, x, y]) => x < grip.x && y < grip.y),
+  );
+  calls.length = 0;
+  stage.time += 0.05;
+  draw(interactionBindings([0, null], null, new Map([[0, { id: 'DualSense' }]])));
+  assert.deepEqual(
+    calls.filter(([name]) => name === 'fillText').map(([, label]) => label),
+    ['□', 'Enter'],
+  );
+  assert.ok(calls.some(([name]) => name === 'arc'));
+  calls.length = 0;
+  stage.time += 0.01;
+  draw([]);
+  assert.ok(
+    calls.some(([name]) => name === 'fillText'),
+    'fade-out still paints on the first frame',
+  );
+  for (let i = 0; i < 3; i++) {
+    stage.time += 0.05;
+    draw([]);
+  }
+  calls.length = 0;
+  draw([]);
+  assert.ok(!calls.some(([name]) => name === 'fillText'));
+});
 
 test('symbol hints require range and the correct role and disappear after completion', () => {
   const stage = makeStage(),

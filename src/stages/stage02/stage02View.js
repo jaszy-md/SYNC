@@ -72,13 +72,22 @@ function drawLog(ctx, surface) {
   drawMoss(ctx, x, y, w);
 }
 
+function traceVineTop(ctx, x, y, nextX, nextY) {
+  // Match the lower segment's direction at the join without moving the pivot.
+  const blend = 0.18;
+  ctx.moveTo(x - 8, -1);
+  ctx.quadraticCurveTo(x - (nextX - x) * blend, y - (nextY - y) * blend, x, y);
+}
+
 function drawVine(ctx, { x, y, length }, time) {
   const bend = Math.sin(time * 0.95 + x * 0.03) * 7;
   ctx.strokeStyle = '#355432';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.quadraticCurveTo(x - 9, y + length * 0.56, x + bend, y + length);
+  const curveX = x - 9;
+  const curveY = y + length * 0.56;
+  traceVineTop(ctx, x, y, curveX, curveY);
+  ctx.quadraticCurveTo(curveX, curveY, x + bend, y + length);
   ctx.stroke();
   for (let i = 1; i < 6; i++) {
     const t = i / 6;
@@ -86,6 +95,73 @@ function drawVine(ctx, { x, y, length }, time) {
     ctx.fillStyle = i % 2 ? '#557743' : '#72964b';
     ctx.fillRect(Math.round(leafX + (i % 2 ? -8 : 0)), Math.round(y + length * t), 8, 3);
   }
+}
+
+function drawSwingingVine(ctx, { x, grip }) {
+  const topX = x - 8;
+  const topY = -1;
+  const controlX = topX + (grip.x - topX) * 0.25;
+  const controlY = (topY + grip.y) / 2;
+  ctx.strokeStyle = '#355432';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(topX, topY);
+  ctx.quadraticCurveTo(controlX, controlY, grip.x, grip.y);
+  ctx.stroke();
+
+  for (let i = 1; i <= 6; i++) {
+    const t = 0.57 + i * 0.055;
+    const u = 1 - t;
+    const leafX = u * u * topX + 2 * u * t * controlX + t * t * grip.x;
+    const leafY = topY + t * (grip.y - topY);
+    ctx.fillStyle = i % 2 ? '#557743' : '#72964b';
+    ctx.fillRect(Math.round(leafX) - (i % 2 ? 6 : 0), Math.round(leafY), 7, 3);
+  }
+
+  ctx.save();
+  ctx.translate(grip.x, grip.y);
+  for (const [color, points] of [
+    [
+      '#45653a',
+      [
+        [-1, -2],
+        [-4, -5],
+        [-8, -5],
+        [-7, -2],
+        [-4, 0],
+        [0, 0],
+      ],
+    ],
+    [
+      '#72964b',
+      [
+        [0, -1],
+        [3, -4],
+        [7, -4],
+        [6, -1],
+        [3, 1],
+        [0, 1],
+      ],
+    ],
+    [
+      '#557743',
+      [
+        [-1, -1],
+        [1, 0],
+        [2, 3],
+        [1, 6],
+        [-2, 4],
+        [-3, 1],
+      ],
+    ],
+  ]) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    for (const [leafX, leafY] of points) ctx.lineTo(leafX, leafY);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawFern(ctx, x, y, time) {
@@ -132,9 +208,9 @@ function drawBrokenBridge(ctx, time) {
   }
 }
 
-export function drawJungleTerrain(ctx, time) {
+export function drawJungleTerrain(ctx, time, vine) {
   ctx.save();
-  drawVine(ctx, { x: 377, y: 255, length: 144 }, time);
+  drawSwingingVine(ctx, vine);
   drawVine(ctx, CROSSING.vine, time);
   drawRavine(ctx);
   Object.values(LAND).forEach((surface) => {

@@ -1,6 +1,7 @@
 import { getCharacterImage } from './characterAssets.js';
 import { shouldMirrorSprite } from './spriteOrientation.js';
 import {
+  CROUCH_TRANSITION_MS,
   PLAYER_HEIGHT,
   PLAYER_CROUCH_HEIGHT,
   PLAYER_SPRITE_SCALE,
@@ -8,6 +9,18 @@ import {
 } from './playerConfig.js';
 
 export const WALK_FRAME_INTERVAL_MS = 200;
+export const walkPose = (elapsed) => (elapsed < WALK_FRAME_INTERVAL_MS ? 'walkLeft' : 'walkRight');
+
+// Rear hand in each source jump frame, normalized to the image dimensions.
+const GRIP_IN_JUMP_POSE = {
+  enes: [0.07, 0.39],
+  jaszy: [0.08, 0.37],
+  koen: [0.08, 0.38],
+  lucas: [0.08, 0.38],
+  maikel: [0.09, 0.31],
+  max: [0.09, 0.41],
+  tim: [0.08, 0.33],
+};
 
 export function getPlayerSpriteBounds(player, pose = 'walkLeft') {
   const image = getCharacterImage(player.character.sprites[pose]);
@@ -20,7 +33,10 @@ export function getPlayerSpriteBounds(player, pose = 'walkLeft') {
 }
 
 export function drawPlayer(player, ctx) {
-  const { x, y, w, h } = player;
+  if (player.hanging) {
+    drawHangingPlayer(player, ctx);
+    return;
+  }
   const pose =
     player.shootPoseMs > 0
       ? player.crouched
@@ -33,10 +49,47 @@ export function drawPlayer(player, ctx) {
           : player.crouched
             ? 'crouch'
             : Math.abs(player.vx) > 0.1
-              ? player.walkElapsedMs < WALK_FRAME_INTERVAL_MS
-                ? 'walkLeft'
-                : 'walkRight'
+              ? walkPose(player.walkElapsedMs)
               : 'idle';
+  if (
+    pose === 'crouch' &&
+    !player.shootPoseMs &&
+    player.crouchBlendMs > 0 &&
+    !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  ) {
+    const blend = player.crouchBlendMs / CROUCH_TRANSITION_MS;
+    ctx.save();
+    ctx.globalAlpha *= blend * 0.65;
+    drawPose(player, ctx, player.crouchFromPose);
+    ctx.restore();
+    ctx.save();
+    ctx.globalAlpha *= 1 - blend * 0.65;
+    drawPose(player, ctx, pose);
+    ctx.restore();
+    return;
+  }
+  drawPose(player, ctx, pose);
+}
+
+function drawHangingPlayer(player, ctx) {
+  const image = getCharacterImage(player.character.sprites.jump);
+  if (!image) {
+    drawPose(player, ctx, 'jump');
+    return;
+  }
+  const { w, h } = getPlayerSpriteBounds(player, 'jump');
+  const [handX, handY] = GRIP_IN_JUMP_POSE[player.character.id] ?? [0.08, 0.37];
+  const { grip, angle } = player.hanging;
+  ctx.save();
+  ctx.translate(grip.x, grip.y);
+  ctx.rotate(player.facing * 0.35 - angle * 0.36);
+  ctx.scale(player.facing, 1);
+  ctx.drawImage(image, -w * handX, -h * handY, w, h);
+  ctx.restore();
+}
+
+function drawPose(player, ctx, pose) {
+  const { x, y, w, h } = player;
   const image = getCharacterImage(player.character.sprites[pose]);
   // All characters and poses share one source-pixel scale, preserving natural proportions.
   const spriteScale = (PLAYER_HEIGHT * PLAYER_SPRITE_SCALE) / PLAYER_SPRITE_REFERENCE_HEIGHT;

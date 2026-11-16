@@ -1,6 +1,6 @@
 import { updatePlayerMovement } from './playerMovement.js';
-import { drawPlayer, WALK_FRAME_INTERVAL_MS } from './playerRenderer.js';
-import { PLAYER_WIDTH, PLAYER_HEIGHT } from './playerConfig.js';
+import { drawPlayer, walkPose, WALK_FRAME_INTERVAL_MS } from './playerRenderer.js';
+import { CROUCH_TRANSITION_MS, PLAYER_WIDTH, PLAYER_HEIGHT } from './playerConfig.js';
 export const INTERACT_POSE_DURATION_MS = 250;
 
 export class Player {
@@ -17,6 +17,7 @@ export class Player {
       vy: 0,
       grounded: false,
       crouched: false,
+      crouchBlendMs: 0,
       facing: 1,
       walkElapsedMs: 0,
       interactPoseMs: 0,
@@ -24,7 +25,12 @@ export class Player {
     });
   }
   update(input, dt, solids, worldWidth = Infinity) {
+    const startsMovingCrouch = !this.crouched && this.grounded && (this.vx || input.move);
     updatePlayerMovement(this, input, dt, solids, worldWidth);
+    if (this.crouched && this.grounded && startsMovingCrouch) {
+      this.crouchFromPose = walkPose(this.walkElapsedMs);
+      this.crouchBlendMs = CROUCH_TRANSITION_MS;
+    } else this.crouchBlendMs = this.crouched ? Math.max(0, this.crouchBlendMs - dt * 1000) : 0;
     if (input.move) this.facing = input.move < 0 ? -1 : 1;
     this.interactPoseMs = Math.max(0, this.interactPoseMs - dt * 1000);
     this.shootPoseMs = Math.max(0, this.shootPoseMs - dt * 1000);

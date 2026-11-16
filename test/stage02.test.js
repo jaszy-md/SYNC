@@ -168,7 +168,7 @@ test('Player 2 reaches the far shore from the log using only jump, grab and swin
   assertOn(player, LAND.perch);
 });
 
-test('Player 1 loses grip on a right swing and speaks only after her first quicksand respawn', () => {
+test('Player 1 slips past the midpoint and keeps the recovery reply for after respawn', () => {
   const stage = new Stage2(CHARACTERS.slice(2, 4));
   stage.motion = { matches: true };
   stage.session.gems.blue = true;
@@ -186,14 +186,19 @@ test('Player 1 loses grip on a right swing and speaks only after her first quick
     assert.equal(stage.vineInput[0].slipAt, 0);
 
     const earlierSpeech = stage.slipMessage;
-    for (let i = 0; i < 280 && !stage.vineInput[0].slipAt; i++) stepPlayer(stage, 0, { move: 1 });
-    assert.ok(stage.vineInput[0].slipAt - stage.time >= 0.4);
+    const midpoint = QUICKSAND.x + QUICKSAND.w / 2;
+    for (let i = 0; i < 280 && !stage.vineInput[0].slipAt; i++) {
+      const beforeMidpoint = player.x + player.w / 2 <= midpoint;
+      stepPlayer(stage, 0, { move: 1 });
+      if (beforeMidpoint) assert.equal(stage.vineInput[0].slipAt, 0);
+    }
+    assert.ok(player.x + player.w / 2 > midpoint && stage.vine.angularVelocity > 0);
+    assert.ok(stage.vineInput[0].slipAt - stage.time >= 0.5);
     for (let i = 0; i < 40; i++) stepPlayer(stage, 0, { move: -1 });
     assert.equal(player.hanging, stage.vine);
     assert.ok(stage.vine.angle > 0 && stage.vine.angularVelocity > 0);
     assert.equal(player.y + 12, stage.vine.grip.y);
-    for (let i = 0; i < 70 && player.hanging; i++)
-      stepPlayer(stage, 0, { move: -1, jump: true, interact: true });
+    for (let i = 0; i < 70 && player.hanging; i++) stepPlayer(stage, 0, { move: -1, jump: true });
     assert.equal(player.hanging, null);
     assert.ok(player.x >= QUICKSAND.x && player.y + player.h < QUICKSAND.y);
     assert.ok(player.vy > 0, 'the player starts falling under gravity');
@@ -201,11 +206,15 @@ test('Player 1 loses grip on a right swing and speaks only after her first quick
     assert.equal(stage.slipMessage, earlierSpeech);
 
     const before = health.value;
+    const initialSpeed = player.vy;
+    stepPlayer(stage, 0);
+    assert.ok(player.vy > initialSpeed && player.vy - initialSpeed < 1600 * STEP);
     for (let i = 0; i < 80 && !stage.sinking[0]; i++) {
       stepPlayer(stage, 0, { move: -1, jump: true, interact: true });
       assert.equal(stage.slipMessage, earlierSpeech);
     }
     assert.ok(stage.sinking[0]);
+    assert.ok(player.x >= QUICKSAND.x && player.x + player.w <= QUICKSAND.x + QUICKSAND.w);
     assert.equal(player.y + player.h, QUICKSAND.y);
     for (let i = 0; i < 30; i++) stepPlayer(stage, 0, { move: 1, jump: true });
     assert.equal(health.value, before);
@@ -232,6 +241,59 @@ test('Player 1 loses grip on a right swing and speaks only after her first quick
   runAttempt();
   assert.equal(stage.slipMessage, reply);
   assert.ok(reply.until < stage.time);
+});
+
+test('Player 1 can drop safely above the log or steer back to it from above the sand', () => {
+  for (const steerLeft of [false, true]) {
+    const stage = new Stage2(CHARACTERS.slice(0, 2));
+    stage.motion = { matches: true };
+    const player = grabFromLog(stage, 0);
+    if (steerLeft) {
+      for (let i = 0; i < 140 && player.x < QUICKSAND.x + 8; i++) stepPlayer(stage, 0, { move: 1 });
+      assert.ok(player.x >= QUICKSAND.x);
+    }
+    const move = steerLeft ? -1 : 0;
+    stepPlayer(stage, 0, { interact: true, move });
+    assert.equal(player.hanging, null);
+    assert.ok(player.vy > 0);
+    assert.equal(stage.vineInput[0].manualDrop.quicksandAhead, false);
+    for (let i = 0; i < 80 && !player.grounded; i++) stepPlayer(stage, 0, { move });
+    assertOn(player, LAND.low);
+    assert.equal(stage.vineInput[0].manualDrop, null);
+    assert.equal(stage.sinking[0], null);
+    assert.equal(stage.health[0].value, 4);
+    assert.equal(stage.slipMessage, null);
+  }
+});
+
+test('Player 1 can drop into quicksand before or during the automatic grip loss', () => {
+  for (const whileSlipping of [false, true]) {
+    const stage = new Stage2(CHARACTERS.slice(0, 2));
+    stage.motion = { matches: true };
+    const player = grabFromLog(stage, 0);
+    const ready = () =>
+      whileSlipping ? stage.vineInput[0].slipAt > 0 : player.x >= QUICKSAND.x + 30;
+    for (let i = 0; i < 140 && !ready(); i++) stepPlayer(stage, 0, { move: 1 });
+    assert.ok(ready());
+    assert.equal(Boolean(stage.vineInput[0].slipAt), whileSlipping);
+    stepPlayer(stage, 0, { interact: true, jump: true });
+    assert.equal(player.hanging, null);
+    assert.ok(player.vy > 0);
+    assert.equal(stage.vineInput[0].slipAt, 0);
+    assert.equal(stage.vineInput[0].manualDrop.quicksandAhead, true);
+    assert.equal(stage.sinking[0], null);
+    for (let i = 0; i < 90 && !stage.sinking[0]; i++) stepPlayer(stage, 0);
+    assert.ok(stage.sinking[0]);
+    assert.equal(stage.vineInput[0].manualDrop, null);
+    for (let i = 0; i < 150 && !stage.respawns[0]; i++) stepPlayer(stage, 0);
+    assert.ok(stage.respawns[0]);
+    assert.equal(stage.health[0].value, 3);
+    assert.equal(stage.slipMessage, null);
+    for (let i = 0; i < 150; i++) stepPlayer(stage, 0);
+    assert.equal(stage.health[0].value, 3);
+    assert.equal(stage.slipMessage.index, 0);
+    assertOn(stage.players[0], LAND.entrance);
+  }
 });
 
 test('the Ancient Crossing keeps its existing coordinates and collision surfaces', () => {

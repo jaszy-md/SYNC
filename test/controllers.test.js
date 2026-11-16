@@ -49,8 +49,8 @@ function setup(t, pads) {
   return {
     input,
     emit,
-    key: (code) => {
-      const event = new Event('keydown', { cancelable: true });
+    key: (code, type = 'keydown') => {
+      const event = new Event(type, { cancelable: true });
       event.code = code;
       target.dispatchEvent(event);
     },
@@ -91,6 +91,32 @@ test('the jungle vine accepts the mapped keyboard and controller buttons and sho
   key('Enter');
   step();
   assert.equal(stage.vine.occupant?.id, 0);
+  key('Enter', 'keyup');
+  step();
+  key('Enter');
+  step();
+  assert.equal(stage.vine.occupant, null);
+  assert.ok(stage.players[0].vy > 0);
+
+  input.assignments = [0, null];
+  const controlled = new Stage2(CHARACTERS.slice(0, 2));
+  const player = controlled.players[0];
+  Object.assign(player, controlled.vine.hangingBounds(player), { grounded: false });
+  const stepControlled = () => {
+    controlled.update(1 / 120, input.sample());
+    input.endFrame();
+  };
+  pad.buttons[0].pressed = pad.buttons[2].pressed = false;
+  stepControlled();
+  pad.buttons[2].pressed = true;
+  stepControlled();
+  assert.equal(controlled.vine.occupant, player);
+  pad.buttons[2].pressed = false;
+  stepControlled();
+  pad.buttons[2].pressed = true;
+  stepControlled();
+  assert.equal(controlled.vine.occupant, null);
+  assert.ok(player.vy > 0);
 });
 
 test('gameplay keys prevent browser defaults, ignore menus/text entry and clear on blur', (t) => {

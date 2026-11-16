@@ -1,5 +1,5 @@
 import { Player } from '../../entities/player/createPlayer.js';
-import { jumpPlayer } from '../../entities/player/playerMovement.js';
+import { jumpPlayer, updatePlayerMovement } from '../../entities/player/playerMovement.js';
 import { PLAYER_HEIGHT } from '../../entities/player/playerConfig.js';
 import { createSessionState } from '../../core/gameState.js';
 import { drawHealth } from '../../ui/components/healthPortrait.js';
@@ -18,7 +18,10 @@ const FALL_Y = HEIGHT + 24;
 const RESPAWN_ANIMATION_SPEED = 2;
 const GRAB_BUFFER = 0.15;
 const REGRAB_DELAY = 0.15;
-const SLIP_TIME = 0.46;
+const SLIP_TIME = 0.56;
+const QUICKSAND_MIDPOINT = QUICKSAND.x + QUICKSAND.w / 2;
+const FAILED_FALL_RATE = 0.84;
+const FAILED_FALL_MAX_DRIFT = 38;
 const SLIP_MESSAGE_TIME = 3;
 const SINK_SPEED = 58;
 const SLIP_MESSAGE = 'Ohh... ik moet blijkbaar op een andere manier oversteken!';
@@ -58,6 +61,24 @@ function spawnPlayer(id, character) {
   return player;
 }
 
+function touchesQuicksand(player) {
+  return (
+    !player.grounded &&
+    player.y + player.h >= QUICKSAND.y &&
+    player.x + player.w > QUICKSAND.x &&
+    player.x < QUICKSAND.x + QUICKSAND.w
+  );
+}
+
+function willTouchQuicksand(player, input, dt, solids) {
+  // Use the same movement and solid collisions as the live drop, with the current steering.
+  const projected = { ...player };
+  while (!projected.grounded && projected.y + projected.h < QUICKSAND.y) {
+    updatePlayerMovement(projected, input, dt, solids, WIDTH);
+  }
+  return touchesQuicksand(projected);
+}
+
 export class Stage2 {
   id = 2;
 
@@ -77,6 +98,7 @@ export class Stage2 {
       regrabAt: 0,
       slipAt: 0,
       failedSwing: false,
+      manualDrop: null,
     }));
     this.slipMessage = null;
     this.health = this.players.map(() => ({ value: 4, max: 4, invulnerable: 0 }));
@@ -86,6 +108,7 @@ export class Stage2 {
     if (this.sinking[player.id] || !this.vine.grab(player, this.solids, offset)) return false;
     const request = this.vineInput[player.id];
     request.grabUntil = 0;
+    request.manualDrop = null;
     return true;
   }
 
@@ -99,7 +122,7 @@ export class Stage2 {
     }
     const request = this.vineInput[id];
     const failedSwing = Boolean(request.failedSwing && this.sinking[id]);
-    Object.assign(request, { grabUntil: 0, regrabAt: 0, slipAt: 0, failedSwing });
+    Object.assign(request, { grabUntil: 0, regrabAt: 0, slipAt: 0, failedSwing, manualDrop: null });
     this.sinking[id] = null;
     this.players[id] = spawnPlayer(id, character);
     this.respawns[id] = new PortalOpening({ local: true });
@@ -139,18 +162,23 @@ export class Stage2 {
       let jumping = jump;
       if (hanging) {
         if (hanging.active && hanging === this.vine && index !== PARKOUR_VINE.swingPlayerId) {
-          if (!request.slipAt) {
-            if (hanging.angle >= 0.18 && hanging.angularVelocity >= 0.45)
-              request.slipAt = this.time + SLIP_TIME;
-            continue;
+          if (!interact) {
+            if (!request.slipAt) {
+              if (player.x + player.w / 2 > QUICKSAND_MIDPOINT && hanging.angularVelocity > 0)
+                request.slipAt = this.time + SLIP_TIME;
+              continue;
+            }
+            if (this.time < request.slipAt) continue;
           }
-          if (this.time < request.slipAt) continue;
           request.slipAt = 0;
-          // Release only on a rightward pass with the player's body already over the sand.
-          if (hanging.angularVelocity <= 0 || player.x < QUICKSAND.x) continue;
           jumping = false;
-          request.failedSwing = true;
-          player.swingMomentum = Math.min(45, hanging.length * hanging.angularVelocity);
+          if (interact) request.manualDrop = { quicksandAhead: false };
+          else request.failedSwing = true;
+          const drift = Math.cos(hanging.angle) * hanging.length * hanging.angularVelocity * 0.5;
+          player.swingMomentum = Math.max(
+            -FAILED_FALL_MAX_DRIFT,
+            Math.min(FAILED_FALL_MAX_DRIFT, drift),
+          );
         } else if (hanging.active && !jump && !interact) continue;
         request.grabUntil = 0;
         request.regrabAt = this.time + REGRAB_DELAY;
@@ -164,26 +192,31 @@ export class Stage2 {
           pendingGrabs.push({ player, offset: this.vine.gripOffset(player) });
         }
       }
-      player.update(
-        request.failedSwing
-          ? { move: 0, jump: false, crouch: false }
-          : { move, jump: jumping, crouch: hanging && jumping ? false : crouch },
-        dt,
-        this.solids,
-        WIDTH,
-      );
-      if (player.grounded) request.failedSwing = false;
-      if (
-        !player.grounded &&
-        player.y + player.h >= QUICKSAND.y &&
-        player.x + player.w > QUICKSAND.x &&
-        player.x < QUICKSAND.x + QUICKSAND.w
-      ) {
+      const movement = request.failedSwing
+        ? { move: 0, jump: false, crouch: false }
+        : { move, jump: jumping, crouch: hanging && jumping ? false : crouch };
+      player.update(movement, request.failedSwing ? dt * FAILED_FALL_RATE : dt, this.solids, WIDTH);
+      if (player.grounded) {
+        request.failedSwing = false;
+        request.manualDrop = null;
+      }
+      if (touchesQuicksand(player)) {
+        request.failedSwing ||= Boolean(request.manualDrop);
+        request.manualDrop = null;
         player.y = QUICKSAND.y - player.h;
         player.vx = player.vy = player.swingMomentum = 0;
         request.grabUntil = 0;
         this.sinking[index] = { at: this.time, x: player.x + player.w / 2 };
-      } else if (player.y >= FALL_Y && this.respawn(player)) return;
+      } else if (player.y >= FALL_Y) {
+        if (this.respawn(player)) return;
+      } else if (request.manualDrop) {
+        request.manualDrop.quicksandAhead = willTouchQuicksand(
+          player,
+          { ...movement, jump: false },
+          dt,
+          this.solids,
+        );
+      }
     }
     const rider = this.vine.occupant?.id;
     const losingGrip = this.vineInput[rider]?.slipAt;
@@ -237,8 +270,8 @@ export class Stage2 {
     const sceneryTime = this.motion?.matches ? 0 : this.time;
     const rider = this.vine.occupant;
     const slipAt = this.vineInput[rider?.id]?.slipAt;
-    const slip =
-      slipAt && !this.motion?.matches ? Math.max(0, 1 - (slipAt - this.time) / SLIP_TIME) : 0;
+    const slipProgress = slipAt ? Math.max(0, 1 - (slipAt - this.time) / SLIP_TIME) : 0;
+    const slip = this.motion?.matches ? 0 : slipProgress;
     const wobble = Math.sin(slip * Math.PI) * Math.sin(slip * Math.PI * 8);
     drawQuicksand(ctx, sceneryTime, this.sinking, this.time);
     drawJungleTerrain(ctx, sceneryTime, this.vine, wobble * 10);
@@ -254,7 +287,7 @@ export class Stage2 {
       if (slip && player === rider) {
         const { x, y } = this.vine.grip;
         ctx.translate(x, y + Math.max(0, slip - 0.6) * 5);
-        ctx.rotate(player.facing * slip ** 2 * 0.26 + wobble * 0.16);
+        ctx.rotate(player.facing * slip ** 2 * 0.26 + wobble * 0.2);
         ctx.translate(-x, -y);
       }
       player.draw(ctx);
@@ -262,17 +295,23 @@ export class Stage2 {
       respawn?.draw(ctx, [player]);
     });
     drawControlHints(ctx, this, this.getVineHints(bindings), undefined, 72);
-    this.players.forEach((player, index) => {
-      if (!this.vineInput[index].failedSwing || this.sinking[index] || this.respawns[index]) return;
-      const clearance = QUICKSAND.y - (player.y + player.h);
-      if (clearance > 8) {
-        drawSpeechBubble(ctx, player, 'Aaahh!', Math.min(1, (clearance - 8) / 24), WORLD, {
-          pointer: true,
-          beside: true,
-        });
-      }
-    });
-    if (this.slipMessage?.until > this.time && !this.respawns[this.slipMessage.index]) {
+    const fallingPlayer = this.players.find(
+      ({ id }) =>
+        (this.vineInput[id].failedSwing || this.vineInput[id].manualDrop?.quicksandAhead) &&
+        !this.sinking[id] &&
+        !this.respawns[id],
+    );
+    const alarmPlayer = slipAt ? rider : fallingPlayer;
+    const clearance = alarmPlayer ? QUICKSAND.y - (alarmPlayer.y + alarmPlayer.h) : 0;
+    if (clearance > 8) {
+      const opacity = slipAt
+        ? Math.min(1, 0.35 + slipProgress * 6)
+        : Math.min(1, (clearance - 8) / 24);
+      drawSpeechBubble(ctx, alarmPlayer, 'Aaahh!', opacity, WORLD, {
+        pointer: true,
+        beside: true,
+      });
+    } else if (this.slipMessage?.until > this.time && !this.respawns[this.slipMessage.index]) {
       const { index, until } = this.slipMessage;
       drawSpeechBubble(
         ctx,

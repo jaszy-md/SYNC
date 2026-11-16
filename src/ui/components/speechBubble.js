@@ -2,7 +2,8 @@ function drawPointedBubble(ctx, x, y, width, height, speakerX, above) {
   const right = x + width;
   const bottom = y + height;
   const radius = 6;
-  const base = Math.max(x + radius + 7, Math.min(right - radius - 7, speakerX));
+  const inset = Math.min(width / 2, radius + 7);
+  const base = Math.max(x + inset, Math.min(right - inset, speakerX));
   ctx.save();
   if (!above) {
     ctx.translate(0, y + bottom);
@@ -27,7 +28,14 @@ function drawPointedBubble(ctx, x, y, width, height, speakerX, above) {
   ctx.restore();
 }
 
-export function drawSpeechBubble(ctx, player, text, opacity, world, { pointer = false } = {}) {
+export function drawSpeechBubble(
+  ctx,
+  player,
+  text,
+  opacity,
+  world,
+  { pointer = false, beside = false } = {},
+) {
   ctx.save();
   ctx.shadowBlur = 0;
   ctx.globalAlpha = opacity;
@@ -40,16 +48,31 @@ export function drawSpeechBubble(ctx, player, text, opacity, world, { pointer = 
     else result[last] += ' ' + word;
     return result;
   }, []);
-  const width = 170;
+  const width = beside ? Math.max(64, ...lines.map((line) => line.length * 8 + 16)) : 170;
   const height = lines.length * 16 + 6;
   const speakerX = player.x + player.w / 2;
-  const x = Math.max(4, Math.min(world.width - width - 4, speakerX - width / 2));
+  const speakerY = player.y + 16;
+  const sideX = player.x + player.w + 13;
+  const rightOfPlayer = beside && sideX + width <= world.width - 4;
+  const x = rightOfPlayer
+    ? sideX
+    : Math.max(4, Math.min(world.width - width - 4, speakerX - width / 2));
   const above = !pointer || player.y >= height + 18;
-  const preferredY = above ? player.y - height - 14 : player.y + player.h + 14;
+  const preferredY = rightOfPlayer
+    ? speakerY - height / 2
+    : above
+      ? player.y - height - 14
+      : player.y + player.h + 14;
   const y = Math.max(4, Math.min(world.height - height - 10, preferredY));
   ctx.fillStyle = '#0c202bee';
   ctx.strokeStyle = '#8cbdbb';
-  if (pointer) {
+  if (rightOfPlayer) {
+    ctx.save();
+    ctx.translate(x + width, y);
+    ctx.rotate(Math.PI / 2);
+    drawPointedBubble(ctx, 0, 0, height, width, speakerY - y, true);
+    ctx.restore();
+  } else if (pointer) {
     drawPointedBubble(ctx, x, y, width, height, speakerX, above);
   } else {
     ctx.fillRect(x, y, width, height);

@@ -187,10 +187,12 @@ test('Player 1 loses grip on a right swing and speaks only after her first quick
 
     const earlierSpeech = stage.slipMessage;
     for (let i = 0; i < 280 && !stage.vineInput[0].slipAt; i++) stepPlayer(stage, 0, { move: 1 });
-    assert.ok(stage.vineInput[0].slipAt > stage.time);
+    assert.ok(stage.vineInput[0].slipAt - stage.time >= 0.4);
+    for (let i = 0; i < 40; i++) stepPlayer(stage, 0, { move: -1 });
+    assert.equal(player.hanging, stage.vine);
     assert.ok(stage.vine.angle > 0 && stage.vine.angularVelocity > 0);
     assert.equal(player.y + 12, stage.vine.grip.y);
-    for (let i = 0; i < 25 && player.hanging; i++)
+    for (let i = 0; i < 70 && player.hanging; i++)
       stepPlayer(stage, 0, { move: -1, jump: true, interact: true });
     assert.equal(player.hanging, null);
     assert.ok(player.x >= QUICKSAND.x && player.y + player.h < QUICKSAND.y);
@@ -438,18 +440,74 @@ test('either player loses exactly one pip, then returns to their start while the
   }
 });
 
-test('zero HP remains visible until the fallen player returns, then only that player is replenished', () => {
-  const stage = new Stage2(CHARACTERS.slice(0, 2));
-  stage.health[0].value = 1;
-  stage.health[1].value = 2;
-  stage.players[0].y = 685;
-  stage.update(STEP, [idle(), idle()]);
-  assert.equal(stage.health[0].value, 0);
-  for (let i = 0; i < 120; i++) stage.update(STEP, [idle(), idle()]);
-  assert.deepEqual(
-    stage.health.map(({ value }) => value),
-    [4, 2],
-  );
+test('zero HP for either player or both in one step starts exactly one fresh Stage 2', () => {
+  for (const defeated of [[0], [1], [0, 1]]) {
+    const characters = CHARACTERS.slice(0, 2).reverse();
+    const stage = new Stage2(characters);
+    const { session, vine, health } = stage;
+    const previousPlayers = [...stage.players];
+    const startX = previousPlayers.map((player) => player.x);
+    session.gems.blue = session.gems.green = true;
+    stage.slipMessage = { index: 0, until: 3 };
+    let resetCount = 0;
+    const reset = stage.reset.bind(stage);
+    stage.reset = () => {
+      resetCount++;
+      reset();
+    };
+    if (defeated.length === 1) {
+      const partner = stage.players[1 - defeated[0]];
+      Object.assign(partner, vine.hangingBounds(partner), { grounded: false });
+      assert.ok(vine.grab(partner, stage.solids));
+    }
+    for (const id of defeated) {
+      health[id].value = 1;
+      if (id === 0) {
+        stage.players[id].y = QUICKSAND.y + 16;
+        stage.vineInput[id].failedSwing = true;
+        stage.sinking[id] = { at: 0, x: QUICKSAND.x + 10 };
+      } else {
+        stage.players[id].y = 685;
+      }
+    }
+    stage.update(STEP, [idle(), idle()]);
+    assert.equal(resetCount, 1);
+    assert.equal(health[defeated[0]].value, 0);
+    if (defeated.length === 2)
+      assert.equal(health[1].value, 1, 'stop applying old damage on reset');
+    assert.equal(stage.id, 2);
+    assert.equal(stage.session, session);
+    assert.deepEqual(stage.session.gems, { blue: true, green: true, gold: false });
+    assert.deepEqual(
+      stage.health.map(({ value }) => value),
+      [4, 4],
+    );
+    assert.deepEqual(
+      stage.players.map(({ character }) => character),
+      characters,
+    );
+    assert.deepEqual(
+      stage.players.map(({ x }) => x),
+      startX,
+    );
+    stage.players.forEach((player, index) => {
+      assert.notEqual(player, previousPlayers[index]);
+      assertOn(player, LAND.entrance);
+      assert.ok(!player.hanging);
+    });
+    assert.notEqual(stage.vine, vine);
+    assert.equal(stage.vine.occupant, null);
+    assert.equal(stage.slipMessage, null);
+    assert.deepEqual(stage.respawns, [null, null]);
+    assert.deepEqual(stage.sinking, [null, null]);
+    assert.ok(stage.opening.active && !stage.opening.local);
+    stepPlayer(stage, 0, { move: 1 });
+    assert.equal(stage.players[0].x, startX[0], 'movement waits for the opening');
+    stage.opening.update(stage.opening.duration);
+    stepPlayer(stage, 0, { move: 1 });
+    assert.ok(stage.players[0].x > startX[0]);
+    assert.equal(resetCount, 1);
+  }
 });
 
 test('a local portal draws one arrival ring without dimming or flashing the canvas', () => {

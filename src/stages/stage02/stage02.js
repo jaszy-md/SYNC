@@ -18,7 +18,7 @@ const FALL_Y = HEIGHT + 24;
 const RESPAWN_ANIMATION_SPEED = 2;
 const GRAB_BUFFER = 0.15;
 const REGRAB_DELAY = 0.15;
-const SLIP_TIME = 0.16;
+const SLIP_TIME = 0.46;
 const SLIP_MESSAGE_TIME = 3;
 const SINK_SPEED = 58;
 const SLIP_MESSAGE = 'Ohh... ik moet blijkbaar op een andere manier oversteken!';
@@ -91,38 +91,48 @@ export class Stage2 {
 
   respawn(player) {
     const { id, character } = player;
+    const health = this.health[id];
+    health.value = Math.max(0, health.value - 1);
+    if (health.value === 0) {
+      this.reset();
+      return true;
+    }
     const request = this.vineInput[id];
     const failedSwing = Boolean(request.failedSwing && this.sinking[id]);
     Object.assign(request, { grabUntil: 0, regrabAt: 0, slipAt: 0, failedSwing });
     this.sinking[id] = null;
-    const health = this.health[id];
-    health.value = Math.max(0, health.value - 1);
     this.players[id] = spawnPlayer(id, character);
     this.respawns[id] = new PortalOpening({ local: true });
+    return false;
+  }
+
+  reset() {
+    const characters = this.players.map((player) => player.character);
+    Object.assign(this, new Stage2(characters, undefined, this.session));
+    this.opening = new PortalOpening();
   }
 
   update(dt, inputs) {
+    if (this.opening?.active) return;
     this.time += dt;
     const pendingGrabs = [];
-    this.players.forEach((player, index) => {
+    for (const [index, player] of this.players.entries()) {
       const request = this.vineInput[index];
       const respawn = this.respawns[index];
       if (respawn) {
         respawn.update(dt * RESPAWN_ANIMATION_SPEED);
         if (!respawn.active) {
           this.respawns[index] = null;
-          const health = this.health[index];
-          if (!health.value) health.value = health.max;
           if (request.failedSwing)
             this.slipMessage ??= { index, until: this.time + SLIP_MESSAGE_TIME };
           request.failedSwing = false;
         }
-        return;
+        continue;
       }
       if (this.sinking[index]) {
         player.y += SINK_SPEED * dt;
-        if (player.y >= QUICKSAND.y + 16) this.respawn(player);
-        return;
+        if (player.y >= QUICKSAND.y + 16 && this.respawn(player)) return;
+        continue;
       }
       const { move, jump, crouch, interact } = inputs[index];
       const { hanging } = player;
@@ -132,16 +142,16 @@ export class Stage2 {
           if (!request.slipAt) {
             if (hanging.angle >= 0.18 && hanging.angularVelocity >= 0.45)
               request.slipAt = this.time + SLIP_TIME;
-            return;
+            continue;
           }
-          if (this.time < request.slipAt) return;
+          if (this.time < request.slipAt) continue;
           request.slipAt = 0;
           // Release only on a rightward pass with the player's body already over the sand.
-          if (hanging.angularVelocity <= 0 || player.x < QUICKSAND.x) return;
+          if (hanging.angularVelocity <= 0 || player.x < QUICKSAND.x) continue;
           jumping = false;
           request.failedSwing = true;
           player.swingMomentum = Math.min(45, hanging.length * hanging.angularVelocity);
-        } else if (hanging.active && !jump && !interact) return;
+        } else if (hanging.active && !jump && !interact) continue;
         request.grabUntil = 0;
         request.regrabAt = this.time + REGRAB_DELAY;
         const verticalMomentum = hanging.release(player, jumping);
@@ -150,7 +160,7 @@ export class Stage2 {
         if (interact && !request.failedSwing && this.time >= request.regrabAt)
           request.grabUntil = this.time + GRAB_BUFFER;
         if (request.grabUntil > this.time) {
-          if (this.tryGrab(player)) return;
+          if (this.tryGrab(player)) continue;
           pendingGrabs.push({ player, offset: this.vine.gripOffset(player) });
         }
       }
@@ -173,11 +183,14 @@ export class Stage2 {
         player.vx = player.vy = player.swingMomentum = 0;
         request.grabUntil = 0;
         this.sinking[index] = { at: this.time, x: player.x + player.w / 2 };
-      } else if (player.y >= FALL_Y) this.respawn(player);
-    });
+      } else if (player.y >= FALL_Y && this.respawn(player)) return;
+    }
+    const rider = this.vine.occupant?.id;
+    const losingGrip = this.vineInput[rider]?.slipAt;
+    // Slow this pass just enough for the grip animation to finish over the sand.
     this.vine.update(
-      dt,
-      inputs[this.vine.occupant?.id]?.move ?? 0,
+      losingGrip ? dt * 0.5 : dt,
+      inputs[rider]?.move ?? 0,
       this.solids,
       !this.motion?.matches,
     );
@@ -226,9 +239,9 @@ export class Stage2 {
     const slipAt = this.vineInput[rider?.id]?.slipAt;
     const slip =
       slipAt && !this.motion?.matches ? Math.max(0, 1 - (slipAt - this.time) / SLIP_TIME) : 0;
-    const wobble = slip * Math.sin(slip * Math.PI * 4);
+    const wobble = Math.sin(slip * Math.PI) * Math.sin(slip * Math.PI * 8);
     drawQuicksand(ctx, sceneryTime, this.sinking, this.time);
-    drawJungleTerrain(ctx, sceneryTime, this.vine, wobble * 4);
+    drawJungleTerrain(ctx, sceneryTime, this.vine, wobble * 10);
     this.players.forEach((player, index) => {
       const respawn = this.respawns[index];
       ctx.save();
@@ -249,6 +262,16 @@ export class Stage2 {
       respawn?.draw(ctx, [player]);
     });
     drawControlHints(ctx, this, this.getVineHints(bindings), undefined, 72);
+    this.players.forEach((player, index) => {
+      if (!this.vineInput[index].failedSwing || this.sinking[index] || this.respawns[index]) return;
+      const clearance = QUICKSAND.y - (player.y + player.h);
+      if (clearance > 8) {
+        drawSpeechBubble(ctx, player, 'Aaahh!', Math.min(1, (clearance - 8) / 24), WORLD, {
+          pointer: true,
+          beside: true,
+        });
+      }
+    });
     if (this.slipMessage?.until > this.time && !this.respawns[this.slipMessage.index]) {
       const { index, until } = this.slipMessage;
       drawSpeechBubble(

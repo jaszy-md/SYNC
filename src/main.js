@@ -128,6 +128,11 @@ function updateSimulation() {
         a.interact = false;
         a.shoot = false;
       });
+      if (stage.opening?.active) {
+        hud.reset();
+        accumulator = 0;
+        break;
+      }
       if (stage.complete) {
         ui.prepareStage(stage.id + 1);
         break;

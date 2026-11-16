@@ -58,11 +58,11 @@ export function travelerLayout(width, height, menuBottom = 0, menuRight = 0) {
 // Both walk poses face left; idle is front-facing and can remain unmirrored.
 export const travelerMirror = (pose) => shouldMirrorSprite(pose, 1);
 
-export function travelerEntry(layout, index, elapsed, entryX) {
+export function travelerEntry(layout, index, elapsed, entryX, count = TRAVELERS.length) {
   const start =
     layout.left + index * layout.spacing + ((index % 3) - 1) * Math.min(4, layout.spacing * 0.08);
   if (elapsed === null) return { x: start, opacity: 1, entered: false };
-  const arrival = entryArrival(index, TRAVELERS.length);
+  const arrival = entryArrival(index, count);
   const absorption = Math.max(0, Math.min(1, (elapsed - arrival) / ENTRY.absorption));
   return {
     x: start + ((entryX - start) * elapsed) / arrival,

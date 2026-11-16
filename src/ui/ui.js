@@ -197,7 +197,6 @@ export function createUI({
       intro = animateJungleIntro(
         document.getElementById('jungle-intro-scene'),
         document.getElementById('jungle-intro-crew'),
-        document.getElementById('jungle-intro-copy'),
         completedStage.players.map(({ character }) => character),
         app,
       );

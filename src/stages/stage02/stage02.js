@@ -2,11 +2,37 @@ import { Player } from '../../entities/player/createPlayer.js';
 import { PLAYER_HEIGHT } from '../../entities/player/playerConfig.js';
 import { createSessionState } from '../../core/gameState.js';
 import { drawHealth } from '../../ui/components/healthPortrait.js';
+import { getCharacterImage } from '../../entities/player/characterAssets.js';
+import { drawJungle } from './jungleView.js';
 
 const WIDTH = 1200;
 const HEIGHT = 660;
 const GROUND = 600;
 const STANDARD_ABILITIES = { jumpSpeed: 500 };
+export const STAGE2_BACKGROUND = '/assets/images/stage2/stage2-background.png';
+
+function drawBackground(ctx) {
+  const image = getCharacterImage(STAGE2_BACKGROUND);
+  if (!image) {
+    drawJungle(ctx, WIDTH, HEIGHT, 0);
+    return;
+  }
+  // Align the walkable trail in the source image with the floor while covering the entire canvas.
+  const trailY = image.naturalHeight * 0.81;
+  const scale = Math.max(
+    WIDTH / image.naturalWidth,
+    GROUND / trailY,
+    (HEIGHT - GROUND) / (image.naturalHeight - trailY),
+  );
+  const width = image.naturalWidth * scale;
+  ctx.drawImage(
+    image,
+    (WIDTH - width) / 2,
+    GROUND - trailY * scale,
+    width,
+    image.naturalHeight * scale,
+  );
+}
 
 export class Stage2 {
   id = 2;
@@ -36,13 +62,13 @@ export class Stage2 {
   }
 
   draw(ctx, debug = false) {
-    ctx.fillStyle = '#102b22';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    const floor = this.solids[0];
-    ctx.fillStyle = '#293d2e';
-    ctx.fillRect(floor.x, floor.y, floor.w, floor.h);
+    drawBackground(ctx);
+    ctx.save();
+    ctx.globalAlpha *= this.opening?.playerOpacity ?? 1;
     this.players.forEach((player) => player.draw(ctx));
+    ctx.restore();
     drawHealth(ctx, this);
+    this.opening?.draw(ctx, this.players);
     if (debug) {
       ctx.strokeStyle = '#ff7493';
       [...this.solids, ...this.players].forEach(({ x, y, w, h }) => ctx.strokeRect(x, y, w, h));

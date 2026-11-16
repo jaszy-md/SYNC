@@ -26,8 +26,8 @@ export class PortalOpening {
     if (this.elapsed > 0.2) {
       const opacity = Math.min(1, (this.elapsed - 0.2) / 0.25) * Math.min(1, (1 - t) * 4);
       players.forEach((player) => {
-        const x = stage01Config.spawn.x + player.id * stage01Config.spawn.spacing + player.w / 2,
-          y = stage01Config.spawn.y + player.h / 2;
+        const x = player.x + player.w / 2,
+          y = player.y + player.h / 2;
         ctx.globalAlpha = opacity;
         ctx.strokeStyle = '#91efff';
         ctx.lineWidth = 3;

@@ -32,22 +32,15 @@ function drawTrees(ctx, color, light, spacing, base, seed) {
   }
 }
 
-function drawRuins(ctx) {
-  // Distant masonry sits well above the playable horizon.
-  for (let row = 0; row < 9; row++) {
-    const left = 227 - row * 5;
-    const y = 87 + row * 8;
-    const width = 40 + row * 10;
-    rect(ctx, '#365b48', left, y, width, 8);
-    rect(ctx, '#62836a', left, y, width, 2);
-    for (let x = left + (row % 2) * 6; x < left + width - 2; x += 12) {
-      rect(ctx, '#2b4d41', x, y + 2, 1, 6);
-      if (noise(x + row) > 0.62) rect(ctx, '#74945f', x, y, 6, 1);
-    }
+function drawFern(ctx, x, y, size, color, flip) {
+  for (let i = 0; i < 12; i++) {
+    const t = i / 12;
+    const stemX = x + flip * size * t;
+    const stemY = y - size * (2 * t - 1.2 * t * t);
+    const leaf = Math.ceil(size * (0.23 - t * 0.17));
+    rect(ctx, color, stemX - leaf, stemY, leaf + 2, 2);
+    rect(ctx, color, stemX, stemY, 2, leaf);
   }
-  rect(ctx, '#274a3d', 240, 100, 15, 19);
-  rect(ctx, '#173b34', 243, 104, 9, 15);
-  rect(ctx, '#52755a', 237, 99, 21, 3);
 }
 
 export function getJungleBackdrop() {
@@ -64,14 +57,22 @@ export function getJungleBackdrop() {
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   drawTrees(ctx, '#4a7160', '#587d65', 17, 152, 20);
-  rect(ctx, '#82a17a', 0, 150, WIDTH, 12);
+  for (let y = 0; y < 172; y += 2) {
+    rect(ctx, '#e5e9a21a', 230 - y * 0.72, y, 8 + y * 0.18, 2);
+    rect(ctx, '#e5e9a212', 273 - y * 0.62, y, 4 + y * 0.14, 2);
+  }
   drawTrees(ctx, '#254e44', '#335f49', 38, 174, 150);
-  drawRuins(ctx);
   for (let x = -5; x < WIDTH; x += 5) {
     const y = 165 - Math.round(noise(x) * 13);
     rect(ctx, '#285746', x, y, 5, HORIZON - y);
     rect(ctx, '#214a3e', x, y + 13, 5, HORIZON - y - 13);
     rect(ctx, '#193b33', x, 186 - noise(x + 1) * 8, 5, 22);
+  }
+  for (let x = 13; x < WIDTH; x += 18) {
+    const size = 9 + noise(x + 104) * 14;
+    const y = 187 + noise(x + 1) * 11;
+    drawFern(ctx, x, y, size, '#477551', 1);
+    drawFern(ctx, x, y, size * 0.8, '#2c5b44', -1);
   }
   for (const [x, flip] of [
     [0, 1],
@@ -84,6 +85,9 @@ export function getJungleBackdrop() {
     rect(ctx, '#19382d', 11, 0, 6, 179);
     rect(ctx, '#122b28', 0, 179, 34, 11);
     rect(ctx, '#122b28', 0, 190, 47, 10);
+    for (let root = 0; root < 9; root++) {
+      rect(ctx, '#213f30', 19 + root * 4, 174 + root * 2, 8, 7);
+    }
     for (let i = 0; i < 26; i++) {
       const left = noise(i + x) * 82;
       const y = noise(i + x + 18) * (45 - left * 0.42);

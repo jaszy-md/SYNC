@@ -7,6 +7,7 @@ import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
 import { preloadCharacterSprites, preloadImage } from './entities/player/characterAssets.js';
 import { BLASTER_GUN_SPRITE } from './stages/stage01/stage01CombatConfig.js';
+import { STAGE2_BACKGROUND } from './stages/stage02/stage02.js';
 import { StageManager } from './core/stageManager.js';
 import { createUI } from './ui/ui.js';
 import { preloadTravelerSprites } from './ui/menuTravelers.js';
@@ -48,14 +49,14 @@ async function start(stageId) {
   try {
     await Promise.all([
       preloadCharacterSprites(characters),
-      stageId === 1 ? preloadImage(BLASTER_GUN_SPRITE) : null,
+      preloadImage(stageId === 1 ? BLASTER_GUN_SPRITE : STAGE2_BACKGROUND),
       gameplayAudio.preload(),
     ]);
     if (state.current !== startingState) return;
     input.clear();
     accumulator = 0;
     stage = stageId === 1 ? manager.newRun(stageId, characters) : manager.load(stageId, characters);
-    if (stageId === 1) stage.opening = new PortalOpening();
+    stage.opening = new PortalOpening();
     hud.reset();
     ui.resetPanel();
     state.set(State.PLAYING);

@@ -77,6 +77,9 @@ function setup(t, Stage = Stage1) {
     '.map-icon-fallback',
     '#map-image',
     '#map-fallback',
+    '#map-title',
+    '#world-map-content',
+    '#jungle-map-content',
   ])
     node(selector);
   const controls = nodes.get('#game-controls');
@@ -131,6 +134,8 @@ test('jungle reuses the map and Mica with neutral speech and accumulated gems', 
   nodes.get('#map').click();
   assert.equal(state.current, State.MAP);
   assert.equal(nodes.get('#facility-map').open, true);
+  assert.equal(nodes.get('#world-map-content').hidden, true);
+  assert.equal(nodes.get('#jungle-map-content').hidden, false);
   hud.closeMap();
   assert.equal(state.current, State.PLAYING);
 });
@@ -144,6 +149,8 @@ test('map navigation, Escape and outside clicks close the overlay and restore wo
   hud.navigate({ confirm: true });
   assert.equal(state.current, State.MAP);
   assert.equal(nodes.get('#facility-map').open, true);
+  assert.equal(nodes.get('#world-map-content').hidden, false);
+  assert.equal(nodes.get('#jungle-map-content').hidden, true);
   assert.equal(document.activeElement, nodes.get('#close-map'));
   hud.navigate({ direction: 'right' });
   assert.equal(state.current, State.MAP);

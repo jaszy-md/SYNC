@@ -29,9 +29,9 @@ export function facilityHudView() {
     systemButton({ hidden: true }) +
     '</div></nav>' +
     '<aside id="helper-bubble" class="helper-bubble" hidden aria-label="Mica spreekt"><span class="helper-name">MICA <small>/ onderhoudseenheid</small></span><button id="close-speech" aria-label="Sluit praatwolkje" class="bubble-close">×</button><p id="helper-text" aria-hidden="true"></p><span id="helper-announcement" class="sr-only" role="status" aria-live="polite"></span></aside>' +
-    '<dialog id="facility-map" aria-labelledby="map-title"><article class="map-document"><header class="map-heading"><div><small>SYNC / WERELDATLAS</small><h2 id="map-title">Escape Chain</h2></div><button id="close-map" class="map-close" aria-label="Sluit de kaart"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 6 13 13 24 25M6 8 17 18 25 24M25 6 18 14 7 26M23 7 15 17 8 24" /></svg></button></header><div class="map-image-frame"><img id="map-image" alt="Kaart van de volledige Escape Chain-wereld" hidden /><div id="map-fallback">' +
+    '<dialog id="facility-map" aria-labelledby="map-title"><article class="map-document"><header class="map-heading"><div><small>SYNC / WERELDATLAS</small><h2 id="map-title">Escape Chain</h2></div><button id="close-map" class="map-close" aria-label="Sluit de kaart"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 6 13 13 24 25M6 8 17 18 25 24M25 6 18 14 7 26M23 7 15 17 8 24" /></svg></button></header><div class="map-image-frame"><div id="world-map-content"><img id="map-image" alt="Kaart van de volledige Escape Chain-wereld" hidden /><div id="map-fallback">' +
     mapFallbackView() +
-    '</div></div><p class="map-caption">ESCAPE CHAIN · WERELDKAART <span>ESC / B · terug naar de wereld</span></p></article></dialog>'
+    '</div></div><p id="jungle-map-content" class="map-unavailable" hidden>De junglekaart is nog leeg.</p></div><p class="map-caption">ESCAPE CHAIN · WERELDKAART <span>ESC / B · terug naar de wereld</span></p></article></dialog>'
   );
 }
 

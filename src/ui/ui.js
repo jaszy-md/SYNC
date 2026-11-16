@@ -62,7 +62,7 @@ export function createUI({
     editingSelect = null,
     setupStep = 0,
     setupStage = 1,
-    stopIntro,
+    intro,
     activePlayer = 0,
     typingTimer,
     scanTimer,
@@ -155,8 +155,8 @@ export function createUI({
     resizeObserver.disconnect();
     clearInterval(typingTimer);
     clearTimeout(scanTimer);
-    stopIntro?.();
-    stopIntro = null;
+    intro?.stop();
+    intro = null;
     input.clear();
     const playing = state.current === State.PLAYING,
       paused = state.current === State.PAUSED,
@@ -193,16 +193,24 @@ export function createUI({
     else if (paused) renderPause();
     else if (complete) {
       screen.innerHTML = completeView();
-      stopIntro = animateJungleIntro(
+      const completedStage = getStage();
+      intro = animateJungleIntro(
         document.getElementById('jungle-intro-scene'),
-        getStage().players[0].character,
+        document.getElementById('jungle-intro-crew'),
+        document.getElementById('jungle-intro-copy'),
+        completedStage.players.map(({ character }) => character),
         app,
       );
+      const startButton = document.getElementById('start-stage-2');
       bind('start-stage-2', () => {
-        if (state.current !== State.STAGE_COMPLETE) return;
-        setupStage = 2;
-        setupStep = 1;
-        state.set(State.SETUP);
+        if (startButton.disabled || state.current !== State.STAGE_COMPLETE) return;
+        startButton.disabled = true;
+        intro.teleport(() => {
+          if (state.current !== State.STAGE_COMPLETE || getStage() !== completedStage) return;
+          setupStage = 2;
+          setupStep = 1;
+          state.set(State.SETUP);
+        });
       });
       bind('replay', () => start(1));
       bind('main-menu', mainMenu);

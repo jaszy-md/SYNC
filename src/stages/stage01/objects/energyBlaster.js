@@ -20,7 +20,7 @@ import {
 } from '../stage01CombatConfig.js';
 
 export function getBlasterPlacement(player) {
-  const sprite = getPlayerSpriteBounds(player);
+  const sprite = getPlayerSpriteBounds(player, player.crouched ? 'crouch' : 'walkLeft');
   const image = getCharacterImage(BLASTER_GUN_SPRITE);
   const w = BLASTER_VISUAL.width;
   const h = w * (image ? image.naturalHeight / image.naturalWidth : 208 / 328);
@@ -131,16 +131,27 @@ export class EnergyBlaster {
       h: 8,
     };
     if (this.stage.solids.some((solid) => overlaps(barrel, solid))) return true;
-    this.projectiles.push({
-      x: gun.muzzleX - 4,
-      y: gun.muzzleY - 4,
-      w: 8,
-      h: 8,
-      vx: direction * BLASTER_PROJECTILE_SPEED,
-      age: 0,
-    });
+    if (!this.hitGuard(barrel)) {
+      this.projectiles.push({
+        x: gun.muzzleX - 4,
+        y: gun.muzzleY - 4,
+        w: 8,
+        h: 8,
+        vx: direction * BLASTER_PROJECTILE_SPEED,
+        age: 0,
+      });
+    }
     gameplayAudio.play('shoot');
     return true;
+  }
+
+  hitGuard(path) {
+    const { stage } = this;
+    const hit = stage.guards.find(
+      (guard) =>
+        guard.active && overlaps(path, guard === stage.guardian ? guard : guard.projectileHitbox),
+    );
+    return hit?.takeDamage(BLASTER_DAMAGE) ?? false;
   }
 
   update(dt, inputs) {
@@ -168,18 +179,21 @@ export class EnergyBlaster {
       if (shot.age >= BLASTER_PROJECTILE_LIFETIME) return false;
       const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
       for (let step = 0; step < steps; step++) {
-        shot.x += (shot.vx * dt) / steps;
+        const dx = (shot.vx * dt) / steps;
+        const path = {
+          x: shot.x + Math.min(dx, 0),
+          y: shot.y,
+          w: shot.w + Math.abs(dx),
+          h: shot.h,
+        };
+        shot.x += dx;
         if (
           shot.x < -shot.w ||
           shot.x > stage01Config.width ||
-          solids.some((solid) => overlaps(shot, solid))
+          solids.some((solid) => overlaps(path, solid)) ||
+          this.hitGuard(path)
         )
           return false;
-        const hit = stage.guards.find((guard) => guard.active && overlaps(shot, guard));
-        if (hit) {
-          hit.takeDamage(BLASTER_DAMAGE);
-          return false;
-        }
       }
       return true;
     });

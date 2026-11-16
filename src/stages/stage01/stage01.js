@@ -46,7 +46,13 @@ export class Stage1 {
 
     this.symbolPuzzle = new SymbolPuzzle(random);
     this.energyPuzzle = new EnergyPuzzle(this);
-    this.guardian = new SecurityDrone();
+    const { gateA } = this;
+    this.guardian = new SecurityDrone({
+      onSpawn: () => {
+        gateA.permanentlyOpen = true;
+        gateA.active = false;
+      },
+    });
     this.miniGuards = [];
     this.miniSpawnElapsed = null;
     this.lastMiniDefeated = null;
@@ -254,7 +260,7 @@ export class Stage1 {
   }
 
   setGate(gate, open) {
-    if (open) {
+    if (open || gate.permanentlyOpen) {
       gate.active = false;
       return;
     }

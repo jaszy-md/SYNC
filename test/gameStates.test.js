@@ -56,6 +56,24 @@ function startGame(app) {
 }
 
 test('completion opens the jungle briefing and starts or restarts Stage 2 with the same crew and session', (t) => {
+  let nextFrame;
+  const saved = ['requestAnimationFrame', 'cancelAnimationFrame'].map((name) => [
+    name,
+    Object.getOwnPropertyDescriptor(globalThis, name),
+  ]);
+  globalThis.requestAnimationFrame = (callback) => {
+    nextFrame = callback;
+    return 1;
+  };
+  globalThis.cancelAnimationFrame = () => {
+    nextFrame = undefined;
+  };
+  t.after(() => {
+    for (const [name, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+  });
   const app = setup(t);
   app.click('start');
   app.click('character-2');
@@ -70,6 +88,10 @@ test('completion opens the jungle briefing and starts or restarts Stage 2 with t
   const introButton = app.document.getElementById('start-stage-2');
   introButton.click();
   introButton.click();
+  assert.equal(introButton.disabled, true);
+  nextFrame(performance.now() + 100);
+  assert.equal(app.state.current, State.STAGE_COMPLETE);
+  nextFrame(performance.now() + 400);
   assert.match(app.screen.innerHTML, /TEAM UP/);
   assert.match(app.screen.innerHTML, /data-character="max"/);
   assert.equal((app.screen.innerHTML.match(/To be determined/g) ?? []).length, 4);
@@ -77,6 +99,7 @@ test('completion opens the jungle briefing and starts or restarts Stage 2 with t
   app.click('back');
   assert.equal(app.state.current, State.STAGE_COMPLETE);
   app.click('start-stage-2');
+  nextFrame(performance.now() + 400);
   app.ui.navigate({ confirm: true });
   assert.equal(app.state.current, State.PLAYING);
   assert.equal(app.stage.id, 2);

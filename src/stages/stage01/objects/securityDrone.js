@@ -23,6 +23,7 @@ export class SecurityDrone {
     speed = GUARD_MOVE_SPEED,
     attackInterval = GUARD_ATTACK_INTERVAL,
     targetPlayerId = null,
+    onSpawn = () => {},
     onDefeated = () => {},
   } = {}) {
     Object.assign(this, {
@@ -31,6 +32,7 @@ export class SecurityDrone {
       speed,
       attackInterval,
       targetPlayerId,
+      onSpawn,
       onDefeated,
     });
     this.reset();
@@ -75,6 +77,7 @@ export class SecurityDrone {
     this.entryX = platform.x + this.w;
     this.direction = 1;
     this.moving = true;
+    this.onSpawn();
   }
 
   takeDamage(amount) {
@@ -108,6 +111,11 @@ export class SecurityDrone {
   get topSurface() {
     // Match the sprite's head, which extends above the patrol collision body.
     return { x: this.x, y: this.y + this.h - 72 * this.scale, w: this.w, h: 6 };
+  }
+
+  get projectileHitbox() {
+    const { x, y, w } = this.topSurface;
+    return { x, y, w, h: this.y + this.h - y };
   }
 
   stomp(player) {

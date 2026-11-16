@@ -2,6 +2,7 @@ import { getCharacterImage } from './characterAssets.js';
 import { shouldMirrorSprite } from './spriteOrientation.js';
 import {
   PLAYER_HEIGHT,
+  PLAYER_CROUCH_HEIGHT,
   PLAYER_SPRITE_SCALE,
   PLAYER_SPRITE_REFERENCE_HEIGHT,
 } from './playerConfig.js';
@@ -12,7 +13,9 @@ export function getPlayerSpriteBounds(player, pose = 'walkLeft') {
   const image = getCharacterImage(player.character.sprites[pose]);
   const scale = (PLAYER_HEIGHT * PLAYER_SPRITE_SCALE) / PLAYER_SPRITE_REFERENCE_HEIGHT;
   const w = image ? image.naturalWidth * scale : player.w * PLAYER_SPRITE_SCALE;
-  const h = image ? image.naturalHeight * scale : PLAYER_HEIGHT * PLAYER_SPRITE_SCALE;
+  const h = image
+    ? image.naturalHeight * scale
+    : (pose === 'crouch' ? PLAYER_CROUCH_HEIGHT : PLAYER_HEIGHT) * PLAYER_SPRITE_SCALE;
   return { x: player.x + (player.w - w) / 2, y: player.y + player.h - h, w, h };
 }
 
@@ -20,7 +23,9 @@ export function drawPlayer(player, ctx) {
   const { x, y, w, h } = player;
   const pose =
     player.shootPoseMs > 0
-      ? 'walkLeft'
+      ? player.crouched
+        ? 'crouch'
+        : 'walkLeft'
       : player.interactPoseMs > 0
         ? 'back'
         : !player.grounded

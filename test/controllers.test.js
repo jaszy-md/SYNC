@@ -123,11 +123,13 @@ test('armed keyboard layout uses right Ctrl while unarmed controller retains wes
   key('Enter');
   assert.equal(input.sample(1)[1].shoot, false, 'F is not the arrow-layout shoot key');
   input.endFrame();
+  key('ArrowDown');
   key('ControlRight');
   const actions = input.sample(1);
   assert.equal(actions[0].shoot, false);
   assert.ok(actions[0].interactHeld);
   assert.ok(actions[1].shoot);
+  assert.ok(actions[1].crouch);
   assert.ok(actions[1].interactHeld);
   input.endFrame();
   assert.ok(
@@ -137,10 +139,12 @@ test('armed keyboard layout uses right Ctrl while unarmed controller retains wes
 
 test('WASD uses F and shoot ownership follows the sampled owner instead of a fixed player index', (t) => {
   const { input, key } = setup(t, []);
+  key('KeyS');
   key('KeyF');
   key('ControlRight');
   const actions = input.sample(0);
   assert.equal(actions[0].shoot, true);
+  assert.equal(actions[0].crouch, true);
   assert.equal(actions[1].shoot, false);
   input.endFrame();
   assert.equal(input.sample(0)[0].shoot, false);
@@ -159,8 +163,10 @@ test('armed west/analog trigger share shoot, LB interacts and pickup press never
   input.sample(1);
   pads[0].buttons[2].pressed = true;
   pads[0].buttons[7].value = 0.7;
+  pads[0].buttons[1].pressed = true;
   const shoot = input.sample(1)[1];
   assert.equal(shoot.shoot, true);
+  assert.equal(shoot.crouch, true);
   assert.equal(shoot.interact, false);
   assert.equal(shoot.interactHeld, false);
   assert.equal(input.sample(1)[1].shoot, false);

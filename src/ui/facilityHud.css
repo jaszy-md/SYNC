@@ -331,6 +331,9 @@
   background: transparent;
   border: 0;
 }
+#world-map-content {
+  display: contents;
+}
 #map-fallback {
   min-height: 0;
 }

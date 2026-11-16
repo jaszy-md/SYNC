@@ -155,8 +155,8 @@ test('spawned guard pursues outside the old patrol zone and respects walls', () 
   assert.equal(guard.y + guard.h, keyBar.y);
 });
 
-test('floor plate alone controls the wall after battery delivery and key reveal for either player', () => {
-  for (const phase of ['TRANSFER', 'CHARGE', 'KEY', 'EXIT']) {
+test('floor plate controls the wall for either player before the guardian spawns', () => {
+  for (const phase of ['TRANSFER', 'CHARGE']) {
     for (const playerId of [0, 1]) {
       const stage = makeStage();
       stage.phase = phase;
@@ -172,19 +172,50 @@ test('floor plate alone controls the wall after battery delivery and key reveal 
   }
 });
 
+test('guardian spawn permanently opens the plate wall until Stage 1 is reset', () => {
+  const stage = makeStage();
+  const actions = [idle(), idle()];
+  const [explorer] = stage.players;
+  placeAt(explorer, stage.plate);
+  stage.updateRoutes(actions);
+  assert.equal(stage.gateA.active, false);
+  explorer.x = 0;
+  stage.updateRoutes(actions);
+  assert.equal(stage.gateA.active, true);
+  stage.guardian.spawn(stage.keyPlatform);
+  assert.equal(stage.gateA.active, false, 'open immediately on spawn');
+  assert.ok(!stage.solids.includes(stage.gateA));
+  const x = stage.guardian.x;
+  stage.update(0.1, actions);
+  assert.ok(stage.guardian.x > x);
+  assert.equal(stage.plate.active, false);
+  stage.guardian.takeDamage(stage.guardian.maxHealth);
+  stage.guardian.update(1, stage.players, true, stage.solids);
+  stage.setGate(stage.gateA, false);
+  stage.updateRoutes(actions, 1);
+  assert.equal(stage.gateA.active, false);
+  assert.equal(stage.gateA.slide, 1);
+  assert.equal(stage.gateB.active, true);
+  stage.reset();
+  assert.equal(stage.gateA.active, true);
+  assert.equal(stage.guardian.state, 'inactive');
+  stage.guardian.spawn(stage.keyPlatform);
+  assert.equal(stage.gateA.active, false, 'new attempt can latch independently');
+});
+
 test('closing wall keeps guard on either side, resolves overlaps and reopening resumes pursuit', () => {
   for (const onLeft of [true, false]) {
     const stage = makeStage();
     spawnForCombat(stage);
     const guard = stage.guardian;
-    const gate = stage.gateA;
+    const gate = stage.gateB;
     const player = stage.players[0];
     Object.assign(guard, {
       x: onLeft ? gate.x - guard.w - 2 : gate.x + gate.w + 2,
       y: 600 - guard.h,
       time: 2,
     });
-    Object.assign(player, { x: onLeft ? 550 : 350, y: 600 - player.h });
+    Object.assign(player, { x: gate.x + (onLeft ? 110 : -90), y: 600 - player.h });
     stage.setGate(gate, true);
     stage.setGate(gate, false);
     for (let frame = 0; frame < 240; frame++) guard.update(1 / 120, [player], true, stage.solids);
@@ -198,7 +229,7 @@ test('closing wall keeps guard on either side, resolves overlaps and reopening r
     assert.equal(guard.y, y);
     assert.ok(onLeft ? guard.x + guard.w <= gate.x : guard.x >= gate.x + gate.w);
     assert.ok(!stage.solids.some((solid) => overlaps(guard, solid)));
-    placeAt(stage.players[1], stage.plate);
+    stage.winch.active = true;
     stage.updateRoutes([idle(), idle()]);
     assert.equal(gate.active, false);
     for (let frame = 0; frame < 180; frame++) guard.update(1 / 120, [player], true, stage.solids);

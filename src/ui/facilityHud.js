@@ -71,7 +71,12 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     restore();
   }
   function openMap() {
-    if (state.current !== State.PLAYING || getStage().exitAnimation) return;
+    const stage = getStage();
+    if (state.current !== State.PLAYING || stage.exitAnimation) return;
+    const jungle = stage.id === 2;
+    root.querySelector('#map-title').textContent = jungle ? 'Stage 2 · Jungle' : 'Escape Chain';
+    root.querySelector('#world-map-content').hidden = jungle;
+    root.querySelector('#jungle-map-content').hidden = !jungle;
     const icon = map.getBoundingClientRect();
     state.set(State.MAP);
     dialog.showModal();
@@ -201,6 +206,12 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
       bubble.hidden = true;
       previousStage = getStage();
       previouslyUnlocked = false;
+      const jungle = previousStage.id === 2;
+      map.setAttribute(
+        'aria-label',
+        jungle ? 'Open de junglekaart' : 'Open de Escape Chain-wereldkaart',
+      );
+      map.setAttribute('title', jungle ? 'Junglekaart' : 'Escape Chain-wereldkaart');
     },
     sync(current) {
       if (current !== State.PLAYING) gemFlight.hidden = true;

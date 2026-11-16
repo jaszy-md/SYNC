@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeStage, idle } from '../test-support/stage.js';
+import { makeStage, idle, placeAt } from '../test-support/stage.js';
 import { overlaps } from '../src/core/physics/collision.js';
+import { getBlasterPlacement } from '../src/stages/stage01/objects/energyBlaster.js';
 import {
   MINI_GUARD,
   MINI_GUARD_SPAWN_DELAY,
@@ -141,4 +142,61 @@ test('mini healthbars use each robot health and scaled width', () => {
   stage.miniGuards[1].takeDamage(1);
   stage.miniGuards.forEach((guard) => guard.draw(ctx));
   assert.deepEqual(widths, [44 * MINI_GUARD.scale, 22 * MINI_GUARD.scale]);
+});
+
+test('real standing and crouched shots hit grounded and moving airborne minis and unlock the gem', () => {
+  const stage = makeStage();
+  const tech = stage.players[1];
+  const floor = stage.platforms[0];
+  const dt = 1 / 120;
+  placeAt(tech, stage.blaster);
+  stage.interact(tech);
+  Object.assign(tech, { x: 230, y: floor.y - tech.h, facing: 1 });
+  defeatGuard(stage);
+  stage.updateMiniSpawns(MINI_GUARD_SPAWN_DELAY);
+  const [first, second] = stage.miniGuards;
+  Object.assign(first, { state: 'chasing', x: 350, y: floor.y - first.h, disabled: 5 });
+  Object.assign(second, { state: 'chasing', x: 398, y: floor.y - second.h, disabled: 5 });
+
+  const step = (action = idle()) => stage.update(dt, [idle(), action]);
+  const waitUntil = (done, action = idle()) => {
+    for (let i = 0; i < 200 && !done(); i++) step(action);
+    assert.ok(done());
+  };
+  const standingY = getBlasterPlacement(tech).muzzleY;
+  step({ ...idle(), shoot: true });
+  const shot = stage.blaster.projectiles[0];
+  assert.equal(shot.y + 4, standingY);
+  assert.ok(shot.y + shot.h <= first.y, 'normal shot is above the old movement body');
+  assert.ok(shot.y + shot.h > first.projectileHitbox.y, 'visible head is in its path');
+  waitUntil(() => first.health === 1);
+  assert.ok(first.hitFlash > 0);
+  assert.equal(stage.blaster.projectiles.length, 0);
+  waitUntil(() => stage.blaster.cooldown === 0);
+
+  Object.assign(first, { disabled: 0, vy: -165, time: 2 });
+  const crouch = { ...idle(), crouch: true };
+  const startX = first.x;
+  step({ ...crouch, shoot: true });
+  const lowShot = stage.blaster.projectiles[0];
+  assert.ok(tech.crouched && lowShot.vx > 0);
+  assert.equal(lowShot.y + 4, getBlasterPlacement(tech).muzzleY);
+  assert.ok(lowShot.y + 4 > standingY);
+  waitUntil(() => first.state === 'dying', crouch);
+  assert.notEqual(first.x, startX);
+  assert.ok(first.y + first.h < floor.y, 'hit before the jumping mini lands');
+  assert.ok(tech.crouched);
+  assert.equal(stage.blaster.gem.state, 'hidden');
+
+  for (let hp = second.health; hp > 0; hp--) {
+    waitUntil(() => stage.blaster.cooldown === 0, crouch);
+    step({ ...crouch, shoot: true });
+    waitUntil(() => second.health < hp, crouch);
+  }
+  waitUntil(() => stage.blaster.gem.state === 'available');
+  assert.equal(first.state, 'dead');
+  assert.equal(second.state, 'dead');
+  placeAt(tech, stage.blaster.gem);
+  stage.interact(tech);
+  waitUntil(() => stage.session.gems.blue);
 });

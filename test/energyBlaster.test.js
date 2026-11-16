@@ -7,6 +7,7 @@ import { overlaps } from '../src/core/physics/collision.js';
 import { getBlasterPlacement } from '../src/stages/stage01/objects/energyBlaster.js';
 import { preloadImage, preloadCharacterSprites } from '../src/entities/player/characterAssets.js';
 import { getPlayerSpriteBounds } from '../src/entities/player/playerRenderer.js';
+import { PLAYER_CROUCH_HEIGHT, PLAYER_HEIGHT } from '../src/entities/player/playerConfig.js';
 import {
   BLASTER_COOLDOWN_MS,
   BLASTER_DAMAGE,
@@ -205,8 +206,8 @@ test('energy shots damage only the guard and terminate on solids or expiry', () 
     health,
   );
   assert.equal(stage.blaster.projectiles.length, 0);
-  Object.assign(tech, { x: 400 });
-  stage.guardian.x = 500;
+  Object.assign(tech, { x: stage.gateB.x - 70 });
+  stage.guardian.x = stage.gateB.x + stage.gateB.w + 8;
   stage.blaster.cooldown = 0;
   stage.blaster.shoot(tech);
   stage.blaster.update(1, [idle(), idle()]);
@@ -299,10 +300,10 @@ test('guard healthbar reflects actual health', () => {
 test('shutdown gem stays clear when an energy wall closes over the defeated guard', () => {
   const stage = armedStage();
   const guard = stage.guardian;
-  guard.x = stage.gateA.x;
-  stage.setGate(stage.gateA, true);
+  guard.x = stage.gateB.x;
+  stage.setGate(stage.gateB, true);
   guard.takeDamage(GUARD_MAX_HEALTH);
-  stage.setGate(stage.gateA, false);
+  stage.setGate(stage.gateB, false);
   guard.update(GUARD_SHUTDOWN_DURATION, stage.players, true, stage.solids);
   defeatMinis(stage);
   stage.blaster.update(0.01, [idle(), idle()]);
@@ -388,7 +389,11 @@ test('gun preloads and shares its image cache; side pose and hand grip follow na
       created.push(this);
       if (!path.endsWith('/gun.png')) {
         this.naturalWidth = 600;
-        this.naturalHeight = path.includes('jaszy') ? 950 : 1156;
+        this.naturalHeight = path.endsWith('/crouch.png')
+          ? 740
+          : path.includes('jaszy')
+            ? 950
+            : 1156;
       }
       this.onload();
     }
@@ -455,6 +460,22 @@ test('gun preloads and shares its image cache; side pose and hand grip follow na
       assert.equal(stage.blaster.projectiles[0].x + 4, placement.muzzleX);
       assert.equal(stage.blaster.projectiles[0].y + 4, placement.muzzleY);
       assert.ok(stage.blaster.projectiles[0].vx * facing > 0);
+
+      draws.length = 0;
+      const feet = player.y + player.h;
+      Object.assign(player, {
+        crouched: true,
+        h: PLAYER_CROUCH_HEIGHT,
+        y: feet - PLAYER_CROUCH_HEIGHT,
+      });
+      player.draw(ctx);
+      stage.blaster.draw(ctx);
+      assert.ok(draws[0].image.path.endsWith('/crouch.png'));
+      const crouchPlacement = getBlasterPlacement(player);
+      assert.ok(crouchPlacement.muzzleY > placement.muzzleY);
+      const crouchGun = draws.find((draw) => draw.image.path.endsWith('/gun.png'));
+      assert.equal(crouchGun.transform.y + crouchGun.y, crouchPlacement.y);
+      Object.assign(player, { crouched: false, h: PLAYER_HEIGHT, y: feet - PLAYER_HEIGHT });
     }
   }
   assert.equal(created.filter((image) => image.path.endsWith('/gun.png')).length, 1);

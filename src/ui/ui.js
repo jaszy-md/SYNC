@@ -1,5 +1,5 @@
 import { updateCharacterAvatars } from './components/avatar.js';
-import { completeView } from './screens/completeScreen.js';
+import { animateJungleIntro, completeView } from './screens/completeScreen.js';
 import { menuView } from './screens/menuScreen.js';
 import { rolesView } from './screens/rolesScreen.js';
 import { characterSelectView } from './screens/characterSelectScreen.js';
@@ -12,6 +12,7 @@ import { inputMethods } from '../core/input.js';
 import { createAnimatedWorldBackground } from './animatedWorldBackground.js';
 import { systemMenuView } from './screens/systemMenuScreen.js';
 import { homepageMusic as defaultHomepageMusic } from '../core/audio.js';
+import { getStageBriefing } from './stageBriefings.js';
 
 export function directionalTarget(nodes, current, direction) {
   if (!nodes.includes(current)) return nodes[0];
@@ -54,11 +55,14 @@ export function createUI({
 }) {
   const world = createBackground(selected);
   const screen = document.querySelector('#screen'),
-    game = document.querySelector('#game');
+    game = document.querySelector('#game'),
+    app = document.querySelector('#app');
   let panel = null,
     returnPanel = null,
     editingSelect = null,
     setupStep = 0,
+    setupStage = 1,
+    stopIntro,
     activePlayer = 0,
     typingTimer,
     scanTimer,
@@ -151,15 +155,24 @@ export function createUI({
     resizeObserver.disconnect();
     clearInterval(typingTimer);
     clearTimeout(scanTimer);
+    stopIntro?.();
+    stopIntro = null;
     input.clear();
     const playing = state.current === State.PLAYING,
       paused = state.current === State.PAUSED,
-      mapping = state.current === State.MAP;
-    world.setView(!playing && !paused && !mapping, state.current === State.MENU && !panel);
-    document
-      .querySelector('#app')
-      .classList.toggle('facility-session', playing || paused || mapping);
-    game.hidden = !playing && !paused && !mapping;
+      mapping = state.current === State.MAP,
+      inGame = playing || paused || mapping,
+      complete = state.current === State.STAGE_COMPLETE,
+      jungle =
+        complete ||
+        (inGame ? getStage()?.id === 2 : state.current === State.SETUP && setupStage === 2);
+    world.setView(!inGame && !jungle, state.current === State.MENU && !panel);
+    app.classList.toggle('facility-session', inGame && !jungle);
+    app.classList.toggle('jungle-session', jungle);
+    const levelLabel = document.getElementById('level-label');
+    if (levelLabel)
+      levelLabel.innerHTML = jungle ? 'LEVEL 2 <i>/</i> JUNGLE' : 'LEVEL 1 <i>/</i> ONTDEKKEN';
+    game.hidden = !inGame;
     document.querySelector('#pause').hidden = !playing;
     screen.hidden = playing || mapping;
     const navigating = screen.classList.contains('navigating');
@@ -178,9 +191,20 @@ export function createUI({
     else if (state.current === State.MENU) renderMenu();
     else if (state.current === State.SETUP) renderSetup();
     else if (paused) renderPause();
-    else if (state.current === State.STAGE_COMPLETE) {
+    else if (complete) {
       screen.innerHTML = completeView();
-      bind('replay', start);
+      stopIntro = animateJungleIntro(
+        document.getElementById('jungle-intro-scene'),
+        getStage().players[0].character,
+        app,
+      );
+      bind('start-stage-2', () => {
+        if (state.current !== State.STAGE_COMPLETE) return;
+        setupStage = 2;
+        setupStep = 1;
+        state.set(State.SETUP);
+      });
+      bind('replay', () => start(1));
       bind('main-menu', mainMenu);
     }
     refreshAvatars();
@@ -213,6 +237,7 @@ export function createUI({
       }, 42);
     }
     bind('start', () => {
+      setupStage = 1;
       setupStep = 0;
       state.set(State.SETUP);
     });
@@ -236,12 +261,19 @@ export function createUI({
         }),
       );
     } else {
-      screen.innerHTML = rolesView(selected, input.assignments);
+      const briefing = getStageBriefing(setupStage);
+      screen.innerHTML = rolesView(
+        selected,
+        input.assignments,
+        briefing,
+        setupStage === 2 ? '← Jungle-intro' : undefined,
+      );
       bind('setup-menu', () => open('system'));
-      bind('play', start);
+      bind('play', () => start(briefing.id));
     }
     bind('back', () => {
-      if (setupStep === 0) mainMenu();
+      if (setupStage === 2) state.set(State.STAGE_COMPLETE);
+      else if (setupStep === 0) mainMenu();
       else {
         setupStep--;
         render();
@@ -253,16 +285,17 @@ export function createUI({
     });
   }
   function renderPause() {
-    screen.innerHTML = pauseView();
+    const stageId = getStage().id;
+    screen.innerHTML = pauseView(stageId);
     bind('resume', resume);
     bind('hint', () => {
       resume();
       if (onHint) onHint();
-      else getStage().requestHint();
+      else getStage().requestHint?.();
     });
     bind('controls', () => open('controls'));
     bind('controllers', () => open('controllers'));
-    bind('restart', start);
+    bind('restart', () => start(stageId));
     bind('main-menu', mainMenu);
   }
   let controlsTab = 'keyboard';
@@ -277,6 +310,9 @@ export function createUI({
   }
 
   function renderControls() {
+    const jungle =
+      (state.current === State.SETUP && setupStage === 2) ||
+      (state.current === State.PAUSED && getStage().id === 2);
     const keyboardRows = [
       ['A / D', 'W', 'S', 'E'],
       ['← / →', '↑', '↓', 'Enter'],
@@ -297,11 +333,15 @@ export function createUI({
               'Stick / D-pad',
               'A / ✕',
               'B / ○',
-              getStage()?.blaster.owner === 1 ? 'LB / L1 / L' : 'X / □ / Y',
+              getStage()?.blaster?.owner === 1 ? 'LB / L1 / L' : 'X / □ / Y',
               'X / □ / Y of RT / R2 / ZR',
             ],
           ];
-    screen.innerHTML = controlsView(rows, controlsTab);
+    screen.innerHTML = controlsView(
+      jungle ? rows.map((keys) => keys?.slice(0, 3)) : rows,
+      controlsTab,
+      jungle,
+    );
     ['keyboard', 'gamepad'].forEach((t) =>
       bind(`tab-${t}`, () => {
         controlsTab = t;

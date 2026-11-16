@@ -2,7 +2,7 @@ import { button } from '../components/button.js';
 import { heading } from '../components/heading.js';
 import { back } from '../components/backButton.js';
 
-export function controlsView(rows, controlsTab) {
+export function controlsView(rows, controlsTab, jungle = false) {
   return (
     '<div class="sheet narrow">' +
     heading('INPUT / HOW TO PLAY', 'Vind jullie ritme.') +
@@ -27,8 +27,7 @@ export function controlsView(rows, controlsTab) {
             '<div class="card">' +
             ('<h3>Player ' +
               (i + 1) +
-              ' · ' +
-              (i === 0 ? 'Explorer' : 'Tech') +
+              (jungle ? '' : ' · ' + (i === 0 ? 'Explorer' : 'Tech')) +
               '</h3>' +
               (keys
                 ? keys
@@ -48,9 +47,11 @@ export function controlsView(rows, controlsTab) {
         .join('') +
       '</div>') +
     ('<div class="connected-controller flow-info"><strong>Bediening & pauze</strong><span>' +
-      (controlsTab === 'keyboard'
-        ? 'Pauze via de Menu-knop of Esc. Energy Blaster: WASD = F, pijltjes = rechter Ctrl. Bij de uitgang: samen E + Enter vasthouden.'
-        : 'Gamepad: A = springen, B = bukken, X/□/Y = interactie. Met gun: X/□/Y of RT/R2/ZR = schieten en LB/L1/L = interactie. Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug.') +
+      (jungle
+        ? 'Open het menu via de Menu-knop, Esc of Start op je controller. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug.'
+        : controlsTab === 'keyboard'
+          ? 'Pauze via de Menu-knop of Esc. Energy Blaster: WASD = F, pijltjes = rechter Ctrl. Bij de uitgang: samen E + Enter vasthouden.'
+          : 'Gamepad: A = springen, B = bukken, X/□/Y = interactie. Met gun: X/□/Y of RT/R2/ZR = schieten en LB/L1/L = interactie. Start = Menu. In menu’s: D-pad/stick = navigeren, A = bevestigen, B = terug.') +
       '</span></div>') +
     ('<div class="actions">' + back() + button('save-controls', 'Opslaan', 'primary') + '</div>') +
     '</div>'

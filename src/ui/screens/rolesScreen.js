@@ -16,15 +16,19 @@ function abilityRow(info, kind) {
     kind.toUpperCase() +
     '</span><h4>' +
     info.title +
-    '</h4><p>' +
-    info.description +
-    '</p>' +
+    '</h4>' +
+    (info.description ? '<p>' + info.description + '</p>' : '') +
     (info.note ? '<small class="ability-note">' + info.note + '</small>' : '') +
     '</div></div>'
   );
 }
 
-export function rolesView(selected, assignments, briefing = getStageBriefing(1)) {
+export function rolesView(
+  selected,
+  assignments,
+  briefing = getStageBriefing(1),
+  backLabel = '← Characters',
+) {
   const methods = inputMethods(assignments);
   const panels = briefing.players.map((role, i) => {
     const character = CHARACTERS[selected[i]];
@@ -76,7 +80,7 @@ export function rolesView(selected, assignments, briefing = getStageBriefing(1))
     '</div></div><div class="briefing-footer setup-footer">' +
     systemButton({ id: 'setup-menu', label: 'Open TEAM UP-menu en instellingen' }) +
     '<div class="actions">' +
-    button('back', '← Characters', 'ghost') +
+    button('back', backLabel, 'ghost') +
     button('play', 'START ' + briefing.label + ' →', 'primary') +
     '</div></div></div>'
   );

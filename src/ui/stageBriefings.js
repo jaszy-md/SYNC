@@ -36,6 +36,18 @@ export const STAGE_BRIEFINGS = {
       },
     ],
   },
+  2: {
+    id: 2,
+    label: 'STAGE 02',
+    name: 'JUNGLE',
+    subtitle: 'De jungle wacht op jullie.',
+    teamwork: 'Ga samen op verkenning.',
+    players: Array.from({ length: 2 }, () => ({
+      role: 'Jungle',
+      skill: { icon: 'pending', title: 'To be determined' },
+      weakness: { icon: 'pending', title: 'To be determined' },
+    })),
+  },
 };
 
 export function getStageBriefing(id) {

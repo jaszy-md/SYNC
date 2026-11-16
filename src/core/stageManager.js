@@ -1,6 +1,7 @@
 import { Stage1 } from '../stages/stage01/stage01.js';
+import { Stage2 } from '../stages/stage02/stage02.js';
 import { createSessionState } from './gameState.js';
-const stages = { 1: Stage1 };
+const stages = { 1: Stage1, 2: Stage2 };
 export class StageManager {
   constructor() {
     this.session = createSessionState();

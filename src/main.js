@@ -1,6 +1,7 @@
 import { PortalOpening } from './stages/stage01/portalOpening.js';
 import { createFacilityHud } from './ui/facilityHud.js';
 import './ui/facilityHud.css';
+import './ui/jungleTheme.css';
 import { State, GameState } from './core/gameState.js';
 import { InputManager, interactionBindings } from './core/input.js';
 import { CHARACTERS } from './entities/player/characters.js';
@@ -38,7 +39,7 @@ const state = new GameState(() => {
 });
 const hud = createFacilityHud({ state, getStage: () => stage, returnToWorld });
 let starting = false;
-async function start() {
+async function start(stageId) {
   gameplayAudio.unlock();
   if (starting) return;
   starting = true;
@@ -47,14 +48,14 @@ async function start() {
   try {
     await Promise.all([
       preloadCharacterSprites(characters),
-      preloadImage(BLASTER_GUN_SPRITE),
+      stageId === 1 ? preloadImage(BLASTER_GUN_SPRITE) : null,
       gameplayAudio.preload(),
     ]);
     if (state.current !== startingState) return;
     input.clear();
     accumulator = 0;
-    stage = manager.newRun(1, characters);
-    stage.opening = new PortalOpening();
+    stage = stageId === 1 ? manager.newRun(stageId, characters) : manager.load(stageId, characters);
+    if (stageId === 1) stage.opening = new PortalOpening();
     hud.reset();
     ui.resetPanel();
     state.set(State.PLAYING);
@@ -70,7 +71,7 @@ function resume() {
 function returnToWorld() {
   canvas.focus({ preventScroll: true });
   input.clear();
-  input.sample(stage?.blaster.owner);
+  input.sample(stage?.blaster?.owner);
   input.endFrame();
   accumulator = 0;
 }
@@ -109,7 +110,7 @@ document.addEventListener('visibilitychange', () => {
 function updateSimulation() {
   // Fixed substeps keep AABB collision stable; button edges are consumed once.
   if (accumulator >= FIXED_STEP) {
-    const actions = input.sample(stage.blaster.owner);
+    const actions = input.sample(stage.blaster?.owner);
     stage.players.forEach((player) => {
       player.inputMethod = input.methodFor(player.id);
     });
@@ -139,7 +140,7 @@ function renderGame(elapsed) {
   stage.draw(
     ctx,
     debug,
-    interactionBindings(input.assignments, stage.blaster.owner, input.padSessions),
+    interactionBindings(input.assignments, stage.blaster?.owner, input.padSessions),
   );
   hud.update(elapsed);
   if (debug) drawDebugOverlay(elapsed);
@@ -158,8 +159,12 @@ function drawDebugOverlay(elapsed) {
           `${p.character.name}: ${p.x.toFixed(0)},${p.y.toFixed(0)} ${p.grounded ? 'ground' : 'air'}`,
       )
       .join(' | '),
-    `phase ${stage.phase} | cell ${stage.cell.state} | charge ${stage.charge.toFixed(1)} | door ${stage.door.state}`,
-    `bridge ${stage.bridge.active} | sluices ${stage.gateA.active} / ${stage.gateB.active} | help ${!!stage.helpMarker}`,
+    ...(stage.id === 1
+      ? [
+          `phase ${stage.phase} | cell ${stage.cell.state} | charge ${stage.charge.toFixed(1)} | door ${stage.door.state}`,
+          `bridge ${stage.bridge.active} | sluices ${stage.gateA.active} / ${stage.gateB.active} | help ${!!stage.helpMarker}`,
+        ]
+      : [`Stage ${stage.id} | solids ${stage.solids.length}`]),
   ].forEach((line, i) => ctx.fillText(line, 24, 34 + i * 21));
 }
 
@@ -193,13 +198,13 @@ function frame(time) {
     if (stage.opening?.active) {
       stage.opening.update(elapsed);
       accumulator = 0;
-      input.sample(stage.blaster.owner);
+      input.sample(stage.blaster?.owner);
       input.endFrame();
       if (!stage.opening.active) input.clear();
     } else if (controlsFocused) {
       hud.navigate(navigation);
       accumulator = 0;
-      input.sample(stage.blaster.owner);
+      input.sample(stage.blaster?.owner);
       input.endFrame();
     } else {
       accumulator += elapsed;

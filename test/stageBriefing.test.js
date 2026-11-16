@@ -33,7 +33,7 @@ test('briefing uses selected sprites and Stage 1 role data without mutating game
   assert.deepEqual(playerAbilities, abilities);
 });
 
-test('same briefing view accepts alternate presentation data; only Stage 1 is configured', () => {
+test('same briefing view accepts alternate presentation data and Stage 2 placeholders', () => {
   const base = getStageBriefing(1);
   const fixture = {
     ...base,
@@ -45,6 +45,10 @@ test('same briefing view accepts alternate presentation data; only Stage 1 is co
   assert.match(html, /CONFIGURABLE MISSION/);
   assert.match(html, /Custom briefing copy/);
   assert.equal((html.match(/CUSTOM SKILL/g) ?? []).length, 2);
-  assert.deepEqual(Object.keys(STAGE_BRIEFINGS), ['1']);
+  assert.deepEqual(Object.keys(STAGE_BRIEFINGS), ['1', '2']);
+  const jungle = rolesView([0, 1], [null, null], getStageBriefing(2));
+  assert.match(jungle, /data-stage="2"/);
+  assert.equal((jungle.match(/To be determined/g) ?? []).length, 4);
+  assert.doesNotMatch(jungle, /HIGH JUMP|SHOOTING|undefined/);
   assert.throws(() => getStageBriefing(999), /No briefing configured/);
 });

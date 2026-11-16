@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { createFacilityHud } from '../src/ui/facilityHud.js';
 import { GameState, State } from '../src/core/gameState.js';
 import { Stage1 } from '../src/stages/stage01/stage01.js';
+import { Stage2 } from '../src/stages/stage02/stage02.js';
 import { CHARACTERS } from '../src/entities/player/characters.js';
 
 // Small DOM adapter: exercises the actual HUD handlers with controller UI actions.
-function setup(t) {
+function setup(t, Stage = Stage1) {
   const document = { activeElement: null };
   const nodes = new Map();
   function node(id) {
@@ -108,7 +109,7 @@ function setup(t) {
   });
   const state = new GameState(() => {});
   state.set(State.PLAYING);
-  const stage = new Stage1(CHARACTERS.slice(0, 2), () => 0);
+  const stage = new Stage(CHARACTERS.slice(0, 2), () => 0);
   const hud = createFacilityHud({
     state,
     getStage: () => stage,
@@ -116,6 +117,23 @@ function setup(t) {
   });
   return { hud, stage, state, nodes, document };
 }
+
+test('jungle reuses the map and Mica with neutral speech and accumulated gems', (t) => {
+  const { hud, stage, state, nodes } = setup(t, Stage2);
+  stage.session.gems.blue = true;
+  hud.reset();
+  hud.update(0);
+  assert.ok(nodes.get('#gem-blue').classList.contains('collected'));
+  assert.equal(nodes.get('#gem-flight').hidden, true);
+  nodes.get('#helper').click();
+  assert.match(nodes.get('#helper-announcement').textContent, /Jungleverbinding actief/);
+  assert.equal(hud.speechVisible, true);
+  nodes.get('#map').click();
+  assert.equal(state.current, State.MAP);
+  assert.equal(nodes.get('#facility-map').open, true);
+  hud.closeMap();
+  assert.equal(state.current, State.PLAYING);
+});
 
 test('map navigation, Escape and outside clicks close the overlay and restore world focus', (t) => {
   const { hud, state, nodes, document } = setup(t);

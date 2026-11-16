@@ -16,7 +16,7 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     node: root.querySelector(`#gem-${color}`),
   }));
   function updateGems(stage) {
-    const gem = stage.blaster.gem;
+    const gem = stage.blaster?.gem;
     gemSlots.forEach(({ color, node }) => {
       const collected = stage.session.gems[color];
       node.classList.toggle('collected', collected);
@@ -26,7 +26,7 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
         `${color} Gem: ${collected ? 'verzameld' : 'niet verzameld'}`,
       );
     });
-    gemFlight.hidden = state.current !== State.PLAYING || gem.state !== 'flying';
+    gemFlight.hidden = state.current !== State.PLAYING || gem?.state !== 'flying';
     if (gemFlight.hidden) return;
     const rect = canvas.getBoundingClientRect();
     const slot = gemSlots[0].node.getBoundingClientRect();
@@ -62,9 +62,12 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
     bubble.hidden = false;
   };
   function requestHint() {
-    if (getStage().exitAnimation) return;
-    getStage().requestHint();
-    speak(getStage01Communication(getStage()));
+    const stage = getStage();
+    if (stage.exitAnimation) return;
+    if (stage.id === 1) {
+      stage.requestHint();
+      speak(getStage01Communication(stage));
+    } else speak('Jungleverbinding actief. Jullie kunnen samen op verkenning.');
     restore();
   }
   function openMap() {
@@ -212,15 +215,15 @@ export function createFacilityHud({ state, getStage, returnToWorld }) {
       const stage = getStage();
       if (!stage) return;
       updateGems(stage);
-      if (previousStage !== stage || (previouslyUnlocked && !stage.progress.hintUnlocked)) {
+      const unlocked = stage.progress?.hintUnlocked ?? false;
+      if (previousStage !== stage || (previouslyUnlocked && !unlocked)) {
         speech.dismiss();
         previousStage = stage;
         previouslyUnlocked = false;
       }
-      if (!previouslyUnlocked && stage.progress.hintUnlocked)
-        speak(stage01Config.hints.unlockMessage);
-      previouslyUnlocked = stage.progress.hintUnlocked;
-      helper.classList.toggle('linked', stage.progress.hintUnlocked);
+      if (!previouslyUnlocked && unlocked) speak(stage01Config.hints.unlockMessage);
+      previouslyUnlocked = unlocked;
+      helper.classList.toggle('linked', unlocked);
       if (state.current === State.PLAYING) speech.update(dt);
       bubble.hidden = state.current !== State.PLAYING || !speech.visible;
       text.textContent = speech.visibleText;

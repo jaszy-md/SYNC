@@ -16,6 +16,8 @@ import { MINI_GUARD, MINI_GUARD_SPAWN_DELAY } from './stage01CombatConfig.js';
 // Energy relay: the same physical cell must be moved between two sockets.
 // Opening a passage requires a partner to remain at a remote control.
 export class Stage1 {
+  id = 1;
+
   constructor(characters, random = Math.random, session = createSessionState()) {
     this.session = session;
     this.players = characters.map(

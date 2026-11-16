@@ -3,7 +3,7 @@ import { drawStage01ControlHints } from './hints/controlHints.js';
 import { drawPowerNetwork, drawPortalGate } from './powerNetworkView.js';
 import { drawEnergyPuzzle } from './puzzles/energyPuzzle/energyPuzzleView.js';
 import { stage01Config } from './stage01Config.js';
-import { drawHealthPortrait } from '../../ui/components/healthPortrait.js';
+import { drawHealth } from '../../ui/components/healthPortrait.js';
 
 function drawWorldObjects(ctx, stage) {
   drawFacilityStructure(ctx, stage);
@@ -98,21 +98,4 @@ export function drawStage1(ctx, stage, debug = false, bindings = []) {
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     });
   }
-}
-
-function drawHealth(ctx, stage) {
-  ctx.save();
-  stage.health.forEach((health, index) => {
-    const x = 18 + index * 170;
-    ctx.fillStyle = '#0b1725e6';
-    ctx.fillRect(x, 14, 154, 30);
-    drawHealthPortrait(ctx, stage.players[index]?.character, x + 5, 17);
-    ctx.font = 'bold 12px monospace';
-    for (let pip = 0; pip < health.max; pip++) {
-      ctx.fillStyle =
-        pip < health.value ? (health.invulnerable > 0 ? '#ffbe79' : '#a9dfd5') : '#33434e';
-      ctx.fillRect(x + 36 + pip * 27, 22, 22, 14);
-    }
-  });
-  ctx.restore();
 }

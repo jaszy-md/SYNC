@@ -21,9 +21,10 @@ function setup(t, onHint, music = new HomepageMusic(musicEnvironment())) {
     state,
     input: { assignments: [null, null], clear() {} },
     selected,
-    start: () => {
-      stage = manager.load(
-        1,
+    start: (id) => {
+      stage = (id === 1 ? manager.newRun : manager.load).call(
+        manager,
+        id,
         selected.map((i) => CHARACTERS[i]),
       );
       ui.resetPanel();
@@ -53,6 +54,47 @@ function startGame(app) {
   app.click('next');
   app.click('play');
 }
+
+test('completion opens the jungle briefing and starts or restarts Stage 2 with the same crew and session', (t) => {
+  const app = setup(t);
+  app.click('start');
+  app.click('character-2');
+  app.click('next');
+  app.click('play');
+  const facility = app.stage;
+  facility.session.gems.blue = true;
+  facility.complete = true;
+  app.state.set(State.STAGE_COMPLETE);
+  assert.match(app.screen.innerHTML, /STAGE 1 COMPLETED!/);
+  assert.match(app.screen.innerHTML, /Jullie hebben Stage 1 gehaald!/);
+  const introButton = app.document.getElementById('start-stage-2');
+  introButton.click();
+  introButton.click();
+  assert.match(app.screen.innerHTML, /TEAM UP/);
+  assert.match(app.screen.innerHTML, /data-character="max"/);
+  assert.equal((app.screen.innerHTML.match(/To be determined/g) ?? []).length, 4);
+  assert.equal(app.stage, facility);
+  app.click('back');
+  assert.equal(app.state.current, State.STAGE_COMPLETE);
+  app.click('start-stage-2');
+  app.ui.navigate({ confirm: true });
+  assert.equal(app.state.current, State.PLAYING);
+  assert.equal(app.stage.id, 2);
+  assert.deepEqual(
+    app.stage.players.map((p) => p.character),
+    facility.players.map((p) => p.character),
+  );
+  assert.equal(app.stage.session, facility.session);
+  app.state.set(State.PAUSED);
+  app.click('restart');
+  assert.equal(app.stage.id, 2);
+  assert.equal(app.stage.session.gems.blue, true);
+  app.state.set(State.PAUSED);
+  app.click('main-menu');
+  startGame(app);
+  assert.equal(app.stage.id, 1);
+  assert.equal(app.stage.session.gems.blue, false);
+});
 
 test('real UI handlers pause/reset the owned music and hide the button outside exact home', async (t) => {
   const env = musicEnvironment(),
